@@ -31,6 +31,8 @@ jobs:
     needs: ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
     steps:
       - uses: actions/checkout@v4
 
@@ -50,7 +52,7 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/butilkka-be:${{ github.sha }}
 
       - name: Deploy to EC2
-        if: ${{ secrets.EC2_HOST != '' }}
+        if: env.EC2_HOST != ''
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
