@@ -73,4 +73,5 @@ jobs:
               -e SPRING_FLYWAY_ENABLED=true \
               -e SPRING_SQL_INIT_MODE=never \
               -e "JWT_SECRET=${{ secrets.JWT_SECRET }}" \
+              -e "KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}" \
               ${{ secrets.DOCKER_USERNAME }}/butilkka-be:latest
