@@ -1,12 +1,16 @@
 package bigbang.butilkka_be.auth;
 
-import bigbang.butilkka_be.auth.dto.*;
+import bigbang.butilkka_be.auth.dto.AuthResponse;
+import bigbang.butilkka_be.auth.dto.KakaoLoginRequest;
+import bigbang.butilkka_be.auth.dto.ReissueRequest;
+import bigbang.butilkka_be.auth.dto.ReissueResponse;
+import bigbang.butilkka_be.auth.kakao.KakaoAuthClient;
+import bigbang.butilkka_be.auth.kakao.KakaoUserInfo;
 import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.common.security.JwtTokenProvider;
 import bigbang.butilkka_be.user.User;
 import bigbang.butilkka_be.user.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,27 +21,19 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final KakaoAuthClient kakaoAuthClient;
 
-    public SignupResponse signup(RegisterRequest request) {
-        if (userRepository.existsByLoginId(request.loginId())) {
-            throw AppException.conflict("이미 사용 중인 아이디입니다");
-        }
-        User user = User.create(request.loginId(), passwordEncoder.encode(request.password()), request.name());
-        userRepository.save(user);
-        return new SignupResponse(user.getId(), user.getLoginId());
-    }
+    public AuthResponse kakaoLogin(KakaoLoginRequest request) {
+        KakaoUserInfo kakaoUserInfo = kakaoAuthClient.getUserInfo(request.accessToken());
 
-    public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByLoginId(request.loginId())
-                .orElseThrow(() -> AppException.unauthorized("아이디 또는 비밀번호가 올바르지 않습니다"));
-        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            throw AppException.unauthorized("아이디 또는 비밀번호가 올바르지 않습니다");
-        }
+        User user = userRepository.findByKakaoId(kakaoUserInfo.id())
+                .orElseGet(() -> userRepository.save(
+                        User.create(kakaoUserInfo.id(), kakaoUserInfo.nickname())
+                ));
 
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getLoginId());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getLoginId());
+        String accessToken = jwtTokenProvider.generateAccessToken(String.valueOf(user.getId()));
+        String refreshToken = jwtTokenProvider.generateRefreshToken(String.valueOf(user.getId()));
 
         refreshTokenRepository.deleteByUserId(user.getId());
         refreshTokenRepository.save(

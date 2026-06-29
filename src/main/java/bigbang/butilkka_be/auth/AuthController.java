@@ -1,10 +1,12 @@
 package bigbang.butilkka_be.auth;
 
-import bigbang.butilkka_be.auth.dto.*;
+import bigbang.butilkka_be.auth.dto.AuthResponse;
+import bigbang.butilkka_be.auth.dto.KakaoLoginRequest;
+import bigbang.butilkka_be.auth.dto.ReissueRequest;
+import bigbang.butilkka_be.auth.dto.ReissueResponse;
 import bigbang.butilkka_be.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,15 +20,9 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/signup")
-    public ResponseEntity<ApiResponse<SignupResponse>> signup(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.created("회원가입 성공", authService.signup(request)));
-    }
-
-    @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok("로그인 성공", authService.login(request)));
+    @PostMapping("/kakao")
+    public ResponseEntity<ApiResponse<AuthResponse>> kakaoLogin(@Valid @RequestBody KakaoLoginRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok("로그인 성공", authService.kakaoLogin(request)));
     }
 
     @PostMapping("/reissue")

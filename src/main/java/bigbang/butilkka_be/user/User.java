@@ -17,11 +17,8 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "login_id", nullable = false, unique = true)
-    private String loginId;
-
-    @Column(nullable = false)
-    private String password;
+    @Column(name = "kakao_id", nullable = false, unique = true)
+    private Long kakaoId;
 
     @Column(nullable = false)
     private String name;
@@ -32,10 +29,9 @@ public class User {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    public static User create(String loginId, String encodedPassword, String name) {
+    public static User create(Long kakaoId, String name) {
         User user = new User();
-        user.loginId = loginId;
-        user.password = encodedPassword;
+        user.kakaoId = kakaoId;
         user.name = name;
         user.isOnboarded = false;
         user.createdAt = LocalDateTime.now();
