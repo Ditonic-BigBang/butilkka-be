@@ -1,5 +1,6 @@
 package bigbang.butilkka_be.common.exception;
 
+import bigbang.butilkka_be.common.response.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -11,30 +12,30 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(AppException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAppException(AppException e) {
+        return ResponseEntity.status(e.getHttpStatus())
+                .body(ApiResponse.error(e.getHttpStatus().value(), e.getStatus(), e.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException e) {
+    public ResponseEntity<ApiResponse<List<String>>> handleValidation(MethodArgumentNotValidException e) {
         List<String> errors = e.getBindingResult().getFieldErrors().stream()
                 .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
                 .toList();
         return ResponseEntity.badRequest()
-                .body(new ErrorResponse(400, "Validation failed", errors));
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException e) {
-        return ResponseEntity.badRequest()
-                .body(ErrorResponse.of(400, e.getMessage()));
+                .body(new ApiResponse<>(400, "BAD_REQUEST", "입력값이 올바르지 않습니다", errors));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException e) {
+    public ResponseEntity<ApiResponse<Void>> handleNotReadable(HttpMessageNotReadableException e) {
         return ResponseEntity.badRequest()
-                .body(ErrorResponse.of(400, "Malformed JSON request"));
+                .body(ApiResponse.error(400, "BAD_REQUEST", "요청 형식이 올바르지 않습니다"));
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleException(Exception e) {
+    public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
         return ResponseEntity.internalServerError()
-                .body(ErrorResponse.of(500, "Internal server error"));
+                .body(ApiResponse.error(500, "INTERNAL_SERVER_ERROR", "서버 오류가 발생했습니다"));
     }
 }

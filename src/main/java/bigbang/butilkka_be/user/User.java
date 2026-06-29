@@ -17,23 +17,27 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String name;
-
-    @Column(nullable = false, unique = true)
-    private String email;
+    @Column(name = "login_id", nullable = false, unique = true)
+    private String loginId;
 
     @Column(nullable = false)
     private String password;
 
+    @Column(nullable = false)
+    private String name;
+
+    @Column(name = "is_onboarded", nullable = false)
+    private boolean isOnboarded = false;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    public static User create(String name, String email, String encodedPassword) {
+    public static User create(String loginId, String encodedPassword, String name) {
         User user = new User();
-        user.name = name;
-        user.email = email;
+        user.loginId = loginId;
         user.password = encodedPassword;
+        user.name = name;
+        user.isOnboarded = false;
         user.createdAt = LocalDateTime.now();
         return user;
     }
