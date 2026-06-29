@@ -1,17 +1,18 @@
 package bigbang.butilkka_be.auth;
 
 import bigbang.butilkka_be.auth.dto.AuthResponse;
-import bigbang.butilkka_be.auth.dto.KakaoLoginRequest;
 import bigbang.butilkka_be.auth.dto.ReissueRequest;
 import bigbang.butilkka_be.auth.dto.ReissueResponse;
 import bigbang.butilkka_be.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.net.URI;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -20,9 +21,18 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/kakao")
-    public ResponseEntity<ApiResponse<AuthResponse>> kakaoLogin(@Valid @RequestBody KakaoLoginRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok("로그인 성공", authService.kakaoLogin(request)));
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
+    @GetMapping("/kakao/callback")
+    public ResponseEntity<Void> kakaoCallback(@RequestParam String code) {
+        AuthResponse auth = authService.kakaoCallback(code);
+        URI location = UriComponentsBuilder.fromUriString(frontendUrl + "/auth/kakao")
+                .queryParam("accessToken", auth.accessToken())
+                .queryParam("refreshToken", auth.refreshToken())
+                .queryParam("isOnboarded", auth.isOnboarded())
+                .build().toUri();
+        return ResponseEntity.status(HttpStatus.FOUND).location(location).build();
     }
 
     @PostMapping("/reissue")

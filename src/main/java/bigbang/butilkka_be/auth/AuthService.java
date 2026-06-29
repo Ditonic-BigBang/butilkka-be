@@ -1,7 +1,6 @@
 package bigbang.butilkka_be.auth;
 
 import bigbang.butilkka_be.auth.dto.AuthResponse;
-import bigbang.butilkka_be.auth.dto.KakaoLoginRequest;
 import bigbang.butilkka_be.auth.dto.ReissueRequest;
 import bigbang.butilkka_be.auth.dto.ReissueResponse;
 import bigbang.butilkka_be.auth.kakao.KakaoAuthClient;
@@ -24,8 +23,9 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final KakaoAuthClient kakaoAuthClient;
 
-    public AuthResponse kakaoLogin(KakaoLoginRequest request) {
-        KakaoUserInfo kakaoUserInfo = kakaoAuthClient.getUserInfo(request.accessToken());
+    public AuthResponse kakaoCallback(String code) {
+        String kakaoAccessToken = kakaoAuthClient.getAccessToken(code);
+        KakaoUserInfo kakaoUserInfo = kakaoAuthClient.getUserInfo(kakaoAccessToken);
 
         User user = userRepository.findByKakaoId(kakaoUserInfo.id())
                 .orElseGet(() -> userRepository.save(
