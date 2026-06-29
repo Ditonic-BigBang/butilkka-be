@@ -69,6 +69,8 @@ jobs:
               -e "DB_URL=${{ secrets.DB_URL }}" \
               -e "DB_USERNAME=${{ secrets.DB_USERNAME }}" \
               -e "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" \
-              -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
+              -e SPRING_JPA_HIBERNATE_DDL_AUTO=validate \
+              -e SPRING_FLYWAY_ENABLED=true \
               -e SPRING_SQL_INIT_MODE=never \
+              -e "JWT_SECRET=${{ secrets.JWT_SECRET }}" \
               ${{ secrets.DOCKER_USERNAME }}/butilkka-be:latest
