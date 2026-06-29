@@ -55,20 +55,64 @@ kakao.client-id=카카오_REST_API_키
 
 ---
 
+## 인증 방식
+
+카카오 소셜 로그인만 지원합니다. 일반 회원가입 / 로그인은 없습니다.
+
+로그인 성공 시 **Access Token**(30분)과 **Refresh Token**(7일)을 발급합니다.
+이후 모든 API 요청은 Authorization 헤더에 Access Token을 담아 보내야 합니다.
+
+```
+Authorization: Bearer {accessToken}
+```
+
+Access Token이 만료된 경우 `POST /api/v1/auth/reissue`로 토큰을 재발급받습니다.
+
+---
+
 ## 카카오 로그인 흐름
+
+### 카카오 디벨로퍼 콘솔 설정
+
+[카카오 디벨로퍼](https://developers.kakao.com)에서 앱 생성 후 아래 설정이 필요합니다.
+
+- 플랫폼 > Web > 사이트 도메인: `http://localhost:8080`
+- 카카오 로그인 > 활성화: ON
+- 카카오 로그인 > Redirect URI 등록:
+  - 로컬: `http://localhost:8080/api/v1/auth/kakao/callback`
+  - 프로덕션: `https://{서버도메인}/api/v1/auth/kakao/callback`
+
+### 로그인 흐름
 
 ```
 1. 프론트 → GET /api/v1/auth/kakao/login 호출
-   → 백엔드가 카카오 인증 URL로 리다이렉트
+   → 백엔드가 카카오 인증 페이지로 리다이렉트
 
-2. 카카오 인증 완료 → 백엔드 콜백 호출
+2. 사용자가 카카오 로그인 완료
+   → 카카오가 백엔드 콜백 호출
    GET /api/v1/auth/kakao/callback?code=...
 
-3. 백엔드 → 프론트로 리다이렉트
-   http://localhost:3000/auth/kakao
+3. 백엔드 처리
+   - 카카오로부터 사용자 정보 조회
+   - 최초 로그인 시 자동 회원가입
+   - Access Token / Refresh Token 발급
+
+4. 백엔드 → 프론트로 리다이렉트
+   {FRONTEND_URL}/auth/kakao
      ?accessToken=...
      &refreshToken=...
-     &isOnboarded=false
+     &isOnboarded=true/false
+```
+
+`isOnboarded`가 `false`이면 온보딩 화면으로 이동해야 합니다.
+
+### 토큰 재발급
+
+```
+POST /api/v1/auth/reissue
+Content-Type: application/json
+
+{ "refreshToken": "..." }
 ```
 
 ---
