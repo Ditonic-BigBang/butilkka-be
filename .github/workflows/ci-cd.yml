@@ -75,4 +75,6 @@ jobs:
               -e "JWT_SECRET=${{ secrets.JWT_SECRET }}" \
               -e "KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}" \
               -e "KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}" \
+              -e "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" \
+              -e COOKIE_SECURE=true \
               ${{ secrets.DOCKER_USERNAME }}/butilkka-be:latest

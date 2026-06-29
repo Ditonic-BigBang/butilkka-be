@@ -1,8 +1,6 @@
 package bigbang.butilkka_be.auth;
 
 import bigbang.butilkka_be.auth.dto.AuthResponse;
-import bigbang.butilkka_be.auth.dto.ReissueRequest;
-import bigbang.butilkka_be.auth.dto.ReissueResponse;
 import bigbang.butilkka_be.auth.kakao.KakaoAuthClient;
 import bigbang.butilkka_be.auth.kakao.KakaoUserInfo;
 import bigbang.butilkka_be.common.exception.AppException;
@@ -32,6 +30,38 @@ public class AuthService {
                         User.create(kakaoUserInfo.id(), kakaoUserInfo.nickname())
                 ));
 
+        return issueTokens(user);
+    }
+
+    public AuthResponse refresh(String refreshToken) {
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw AppException.unauthorized("만료되거나 유효하지 않은 리프레시 토큰입니다. 다시 로그인해주세요");
+        }
+
+        RefreshToken stored = refreshTokenRepository.findByToken(refreshToken)
+                .orElseThrow(() -> AppException.unauthorized("만료되거나 유효하지 않은 리프레시 토큰입니다. 다시 로그인해주세요"));
+
+        if (stored.isExpired()) {
+            refreshTokenRepository.delete(stored);
+            throw AppException.unauthorized("만료되거나 유효하지 않은 리프레시 토큰입니다. 다시 로그인해주세요");
+        }
+
+        User user = userRepository.findById(stored.getUserId())
+                .orElseThrow(() -> AppException.unauthorized("존재하지 않는 사용자입니다"));
+
+        refreshTokenRepository.delete(stored);
+        return issueTokens(user);
+    }
+
+    public void logout(String refreshToken) {
+        if (refreshToken == null) {
+            return;
+        }
+        refreshTokenRepository.findByToken(refreshToken)
+                .ifPresent(refreshTokenRepository::delete);
+    }
+
+    private AuthResponse issueTokens(User user) {
         String accessToken = jwtTokenProvider.generateAccessToken(String.valueOf(user.getId()));
         String refreshToken = jwtTokenProvider.generateRefreshToken(String.valueOf(user.getId()));
 
@@ -41,32 +71,5 @@ public class AuthService {
         );
 
         return new AuthResponse(accessToken, refreshToken, user.isOnboarded());
-    }
-
-    public ReissueResponse reissue(ReissueRequest request) {
-        String token = request.refreshToken();
-
-        if (!jwtTokenProvider.validateToken(token)) {
-            throw AppException.unauthorized("만료되거나 유효하지 않은 리프레시 토큰입니다. 다시 로그인해주세요");
-        }
-
-        RefreshToken stored = refreshTokenRepository.findByToken(token)
-                .orElseThrow(() -> AppException.unauthorized("만료되거나 유효하지 않은 리프레시 토큰입니다. 다시 로그인해주세요"));
-
-        if (stored.isExpired()) {
-            refreshTokenRepository.delete(stored);
-            throw AppException.unauthorized("만료되거나 유효하지 않은 리프레시 토큰입니다. 다시 로그인해주세요");
-        }
-
-        String subject = jwtTokenProvider.getSubject(token);
-        String newAccessToken = jwtTokenProvider.generateAccessToken(subject);
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(subject);
-
-        refreshTokenRepository.delete(stored);
-        refreshTokenRepository.save(
-                RefreshToken.create(stored.getUserId(), newRefreshToken, jwtTokenProvider.getRefreshTokenExpiry())
-        );
-
-        return new ReissueResponse(newAccessToken, newRefreshToken);
     }
 }
