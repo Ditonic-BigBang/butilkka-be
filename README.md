@@ -35,9 +35,12 @@ git checkout dev
 
 ```properties
 kakao.client-id=카카오_REST_API_키
+kakao.client-secret=카카오_클라이언트_시크릿
 ```
 
-`kakao.client-id` 값은 팀에게 별도로 공유받으세요.
+값은 팀에게 별도로 공유받으세요.
+- `kakao.client-id` → 카카오 디벨로퍼 → 앱 설정 → 앱 키 → **REST API 키**
+- `kakao.client-secret` → 카카오 디벨로퍼 → 보안 → **클라이언트 시크릿 코드**
 
 ### 3. 실행
 
@@ -134,6 +137,7 @@ Content-Type: application/json
 | `DB_PASSWORD` | 프로덕션 DB 비밀번호 |
 | `JWT_SECRET` | JWT 서명 키 (32자 이상) |
 | `KAKAO_CLIENT_ID` | 카카오 REST API 키 |
+| `KAKAO_CLIENT_SECRET` | 카카오 클라이언트 시크릿 |
 
 > EC2 인스턴스에 Docker가 설치되어 있어야 합니다.
 > `EC2_HOST` Secret이 없으면 배포 단계는 자동으로 스킵됩니다.
