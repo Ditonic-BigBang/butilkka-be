@@ -1,0 +1,14 @@
+.git
+.github
+.gradle
+.idea
+build
+out
+bin
+
+*.md
+*.iml
+*.iws
+*.ipr
+
+src/main/resources/application-secret.properties
