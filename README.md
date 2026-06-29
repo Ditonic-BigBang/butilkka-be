@@ -62,14 +62,18 @@ kakao.client-secret=카카오_클라이언트_시크릿
 
 카카오 소셜 로그인만 지원합니다. 일반 회원가입 / 로그인은 없습니다.
 
-로그인 성공 시 **Access Token**(30분)과 **Refresh Token**(7일)을 발급합니다.
-이후 모든 API 요청은 Authorization 헤더에 Access Token을 담아 보내야 합니다.
+로그인 성공 시 **Access Token**(30분)과 **Refresh Token**(7일)을 **HttpOnly 쿠키**로 발급합니다.
+토큰은 URL에 노출되지 않으며, 브라우저가 자동으로 쿠키를 전송합니다.
 
-```
-Authorization: Bearer {accessToken}
-```
+API 요청 시 쿠키가 자동으로 전송되므로 별도의 헤더 설정이 불필요합니다.
+단, 프론트엔드에서 `fetch` 또는 `axios` 호출 시 **`credentials: 'include'`** 옵션을 반드시 설정해야 합니다.
 
-Access Token이 만료된 경우 `POST /api/v1/auth/reissue`로 토큰을 재발급받습니다.
+```js
+// fetch 예시
+fetch('http://localhost:8080/api/v1/users/me', {
+  credentials: 'include',
+});
+```
 
 ---
 
@@ -89,34 +93,34 @@ Access Token이 만료된 경우 `POST /api/v1/auth/reissue`로 토큰을 재발
 
 ```
 1. 프론트 → GET /api/v1/auth/kakao/login 호출
-   → 백엔드가 카카오 인증 페이지로 리다이렉트
+   → 백엔드가 CSRF 방지용 state 쿠키(5분) 설정 후 카카오 인증 페이지로 리다이렉트
 
 2. 사용자가 카카오 로그인 완료
    → 카카오가 백엔드 콜백 호출
-   GET /api/v1/auth/kakao/callback?code=...
+   GET /api/v1/auth/kakao/callback?code=...&state=...
 
 3. 백엔드 처리
+   - state 검증 (CSRF 방지)
    - 카카오로부터 사용자 정보 조회
    - 최초 로그인 시 자동 회원가입
-   - Access Token / Refresh Token 발급
+   - Access Token(30분) / Refresh Token(7일) 발급
+   - 토큰을 HttpOnly 쿠키로 설정
 
 4. 백엔드 → 프론트로 리다이렉트
-   {FRONTEND_URL}/auth/kakao
-     ?accessToken=...
-     &refreshToken=...
-     &isOnboarded=true/false
+   http://localhost:5173/auth/kakao?success=true&isOnboarded=true/false
 ```
 
 `isOnboarded`가 `false`이면 온보딩 화면으로 이동해야 합니다.
 
-### 토큰 재발급
+### 주요 인증 엔드포인트
 
-```
-POST /api/v1/auth/reissue
-Content-Type: application/json
-
-{ "refreshToken": "..." }
-```
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| `GET` | `/api/v1/auth/kakao/login` | 카카오 로그인 시작 (프론트에서 redirect 또는 window.location 이용) |
+| `GET` | `/api/v1/auth/kakao/callback` | 카카오 OAuth 콜백 (직접 호출 X) |
+| `POST` | `/api/v1/auth/refresh` | Access Token 재발급 (refresh_token 쿠키 필요) |
+| `POST` | `/api/v1/auth/logout` | 로그아웃 (쿠키 삭제 + DB에서 refresh token 제거) |
+| `GET` | `/api/v1/users/me` | 로그인한 사용자 정보 조회 (인증 필요) |
 
 ---
 
@@ -138,6 +142,7 @@ Content-Type: application/json
 | `JWT_SECRET` | JWT 서명 키 (32자 이상) |
 | `KAKAO_CLIENT_ID` | 카카오 REST API 키 |
 | `KAKAO_CLIENT_SECRET` | 카카오 클라이언트 시크릿 |
+| `FRONTEND_URL` | 프론트엔드 URL (예: `https://your-frontend.com`) |
 
 > EC2 인스턴스에 Docker가 설치되어 있어야 합니다.
 > `EC2_HOST` Secret이 없으면 배포 단계는 자동으로 스킵됩니다.
