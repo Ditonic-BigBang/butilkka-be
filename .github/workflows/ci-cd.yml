@@ -50,6 +50,7 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/butilkka-be:${{ github.sha }}
 
       - name: Deploy to EC2
+        if: ${{ secrets.EC2_HOST != '' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
