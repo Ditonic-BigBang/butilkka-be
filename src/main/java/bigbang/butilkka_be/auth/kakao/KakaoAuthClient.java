@@ -2,6 +2,7 @@ package bigbang.butilkka_be.auth.kakao;
 
 import bigbang.butilkka_be.common.exception.AppException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -9,6 +10,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class KakaoAuthClient {
@@ -21,6 +23,9 @@ public class KakaoAuthClient {
     @Value("${kakao.client-id}")
     private String clientId;
 
+    @Value("${kakao.client-secret}")
+    private String clientSecret;
+
     @Value("${kakao.redirect-uri}")
     private String redirectUri;
 
@@ -29,6 +34,7 @@ public class KakaoAuthClient {
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
             params.add("grant_type", "authorization_code");
             params.add("client_id", clientId);
+            params.add("client_secret", clientSecret);
             params.add("redirect_uri", redirectUri);
             params.add("code", code);
 
@@ -40,6 +46,7 @@ public class KakaoAuthClient {
                     .body(KakaoTokenResponse.class);
             return response.accessToken();
         } catch (Exception e) {
+            log.error("카카오 토큰 교환 실패: {}", e.getMessage());
             throw AppException.unauthorized("카카오 인증에 실패했습니다");
         }
     }
