@@ -58,11 +58,8 @@ kakao.client-id=카카오_REST_API_키
 ## 카카오 로그인 흐름
 
 ```
-1. 프론트 → 아래 URL로 브라우저 이동
-   https://kauth.kakao.com/oauth/authorize
-     ?client_id={KAKAO_CLIENT_ID}
-     &redirect_uri=http://localhost:8080/api/v1/auth/kakao/callback
-     &response_type=code
+1. 프론트 → GET /api/v1/auth/kakao/login 호출
+   → 백엔드가 카카오 인증 URL로 리다이렉트
 
 2. 카카오 인증 완료 → 백엔드 콜백 호출
    GET /api/v1/auth/kakao/callback?code=...

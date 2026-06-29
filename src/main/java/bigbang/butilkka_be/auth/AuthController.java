@@ -24,6 +24,23 @@ public class AuthController {
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
+    @Value("${kakao.client-id}")
+    private String kakaoClientId;
+
+    @Value("${kakao.redirect-uri}")
+    private String kakaoRedirectUri;
+
+    @GetMapping("/kakao/login")
+    public ResponseEntity<Void> kakaoLogin() {
+        URI kakaoAuthUrl = UriComponentsBuilder
+                .fromUriString("https://kauth.kakao.com/oauth/authorize")
+                .queryParam("client_id", kakaoClientId)
+                .queryParam("redirect_uri", kakaoRedirectUri)
+                .queryParam("response_type", "code")
+                .build().toUri();
+        return ResponseEntity.status(HttpStatus.FOUND).location(kakaoAuthUrl).build();
+    }
+
     @GetMapping("/kakao/callback")
     public ResponseEntity<Void> kakaoCallback(@RequestParam String code) {
         AuthResponse auth = authService.kakaoCallback(code);
