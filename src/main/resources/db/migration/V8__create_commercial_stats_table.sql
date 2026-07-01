@@ -1,0 +1,35 @@
+CREATE TABLE commercial_stats
+(
+    stat_id              BIGINT       NOT NULL AUTO_INCREMENT COMMENT '통계 ID (PK)',
+    region_code          VARCHAR(20)  NOT NULL COMMENT '상권 코드 (FK → regions)',
+    category_code        VARCHAR(30)  NULL COMMENT '업종 코드 (FK → categories)',
+    quarter               TINYINT      NOT NULL COMMENT '분기 (1~4)',
+    foot_traffic          INT          NULL COMMENT '유동인구 (명)',
+    foot_traffic_delta    DECIMAL(5,2) NULL COMMENT '유동인구 전분기 대비 변화율 (%)',
+    foot_traffic_gap      BIGINT       NULL COMMENT '유동인구 전분기 대비 수치',
+    top_age_group         VARCHAR(10)  NULL COMMENT '유동인구 최다 연령대',
+    top_gender            CHAR(1)      NULL COMMENT '유동인구 최다 성별 (M/F)',
+    store_count            INT          NULL COMMENT '점포 수 (개)',
+    store_count_delta      DECIMAL(5,2) NULL COMMENT '점포 수 전분기 대비 변화율 (%)',
+    store_count_gap        BIGINT       NULL COMMENT '점포 수 전분기 대비 수치',
+    sales_amount           BIGINT       NULL COMMENT '매출 (원)',
+    sales_delta            DECIMAL(5,2) NULL COMMENT '매출 전분기 대비 변화율 (%)',
+    sales_gap               BIGINT       NULL COMMENT '매출 전분기 대비 수치',
+    rent_amount              BIGINT       NULL COMMENT '임대료 (원)',
+    rent_delta                DECIMAL(5,2) NULL COMMENT '임대료 전분기 대비 변화율 (%)',
+    rent_gap                   BIGINT       NULL COMMENT '임대료 전분기 대비 수치',
+    closure_rate                DECIMAL(5,2) NULL COMMENT '폐업률 (%)',
+    closure_rate_delta           DECIMAL(5,2) NULL COMMENT '폐업률 전분기 대비 변화율 (%)',
+    closure_rate_gap              BIGINT       NULL COMMENT '폐업률 전분기 대비 수치',
+    vacancy_rate                   DECIMAL(5,2) NULL COMMENT '공실률 (%)',
+    vacancy_rate_delta              DECIMAL(5,2) NULL COMMENT '공실률 전분기 대비 변화율 (%)',
+    vacancy_rate_gap                 BIGINT       NULL COMMENT '공실률 전분기 대비 수치',
+    avg_business_period               DECIMAL(5,2) NULL COMMENT '평균 영업기간 (년)',
+    decline_grade                      CHAR(1)      NULL COMMENT '쇠퇴 등급 (A~E)',
+    briefing                            VARCHAR(255) NULL COMMENT 'AI 한 줄 브리핑',
+    PRIMARY KEY (stat_id),
+    CONSTRAINT FK_commercial_stats_region FOREIGN KEY (region_code) REFERENCES regions (region_code),
+    CONSTRAINT FK_commercial_stats_category FOREIGN KEY (category_code) REFERENCES categories (category_code)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;

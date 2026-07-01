@@ -5,6 +5,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -20,11 +21,35 @@ public class User {
     @Column(name = "kakao_id", nullable = false, unique = true)
     private Long kakaoId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private String name;
 
     @Column(name = "is_onboarded", nullable = false)
     private boolean isOnboarded = false;
+
+    @Column(name = "store_name", length = 50)
+    private String storeName;
+
+    @Column(name = "store_address", length = 100)
+    private String storeAddress;
+
+    @Column(name = "store_open_date")
+    private LocalDate storeOpenDate;
+
+    @Column(name = "store_region", length = 20)
+    private String storeRegion;
+
+    @Column(name = "category_code", length = 30)
+    private String categoryCode;
+
+    @Column(name = "sms_alert", nullable = false)
+    private boolean smsAlert = false;
+
+    @Column(name = "auto_report", nullable = false)
+    private boolean autoReport = false;
+
+    @Column(name = "urgent_alert", nullable = false)
+    private boolean urgentAlert = false;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
