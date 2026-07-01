@@ -39,6 +39,12 @@ public class User {
     @Column(name = "store_region", length = 20)
     private String storeRegion;
 
+    @Column(name = "store_lat")
+    private Double storeLat;
+
+    @Column(name = "store_lng")
+    private Double storeLng;
+
     @Column(name = "category_code", length = 30)
     private String categoryCode;
 
