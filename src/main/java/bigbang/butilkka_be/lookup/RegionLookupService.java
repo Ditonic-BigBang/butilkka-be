@@ -6,7 +6,6 @@ import bigbang.butilkka_be.lookup.model.GeoJsonFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.*;
 import org.springframework.core.io.ClassPathResource;
@@ -19,13 +18,12 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class RegionLookupService {
 
     private static final int SRID_WGS84 = 4326;
 
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private final GeometryFactory geometryFactory = new GeometryFactory(
             new PrecisionModel(), SRID_WGS84);
 
