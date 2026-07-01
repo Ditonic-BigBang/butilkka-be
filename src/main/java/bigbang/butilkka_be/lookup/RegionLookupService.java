@@ -79,8 +79,28 @@ public class RegionLookupService {
         throw new IllegalArgumentException("Unsupported geometry type: " + type);
     }
 
-    private Polygon parsePolygon(JsonNode coordinates) {
-        JsonNode ring = coordinates.get(0);
+    private Polygon parsePolygon(JsonNode ringsNode) {
+        LinearRing shell = parseRing(ringsNode.get(0));
+
+        LinearRing[] holes = new LinearRing[Math.max(0, ringsNode.size() - 1)];
+        for (int i = 1; i < ringsNode.size(); i++) {
+            holes[i - 1] = parseRing(ringsNode.get(i));
+        }
+
+        return geometryFactory.createPolygon(shell, holes);
+    }
+
+    private Geometry parseMultiPolygon(JsonNode coordinates) {
+        Polygon[] polygons = new Polygon[coordinates.size()];
+
+        for (int i = 0; i < coordinates.size(); i++) {
+            polygons[i] = parsePolygon(coordinates.get(i));
+        }
+
+        return geometryFactory.createMultiPolygon(polygons);
+    }
+
+    private LinearRing parseRing(JsonNode ring) {
         Coordinate[] coords = new Coordinate[ring.size()];
 
         for (int i = 0; i < ring.size(); i++) {
@@ -88,25 +108,7 @@ public class RegionLookupService {
             coords[i] = new Coordinate(point.get(0).asDouble(), point.get(1).asDouble());
         }
 
-        return geometryFactory.createPolygon(coords);
-    }
-
-    private Geometry parseMultiPolygon(JsonNode coordinates) {
-        Polygon[] polygons = new Polygon[coordinates.size()];
-
-        for (int i = 0; i < coordinates.size(); i++) {
-            JsonNode ring = coordinates.get(i).get(0);
-            Coordinate[] coords = new Coordinate[ring.size()];
-
-            for (int j = 0; j < ring.size(); j++) {
-                JsonNode point = ring.get(j);
-                coords[j] = new Coordinate(point.get(0).asDouble(), point.get(1).asDouble());
-            }
-
-            polygons[i] = geometryFactory.createPolygon(coords);
-        }
-
-        return geometryFactory.createMultiPolygon(polygons);
+        return geometryFactory.createLinearRing(coords);
     }
 
     public LookupResponse lookup(double lat, double lng) {
@@ -122,7 +124,7 @@ public class RegionLookupService {
         Point point = geometryFactory.createPoint(new Coordinate(lng, lat));
 
         Optional<GeoJsonFeature> matchingFeature = seoulFeatures.stream()
-                .filter(feature -> feature.geometry().contains(point))
+                .filter(feature -> feature.geometry().covers(point))
                 .findFirst();
 
         if (matchingFeature.isEmpty()) {

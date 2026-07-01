@@ -1,0 +1,92 @@
+package bigbang.butilkka_be.lookup;
+
+import bigbang.butilkka_be.lookup.dto.LookupResponse;
+import bigbang.butilkka_be.lookup.model.GeoJsonFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.MultiPolygon;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.PrecisionModel;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class RegionLookupServiceTest {
+
+    private static final GeometryFactory GEOMETRY_FACTORY =
+            new GeometryFactory(new PrecisionModel(), 4326);
+
+    private final RegionLookupService service = new RegionLookupService();
+
+    @Test
+    void lookup_matchesPointExactlyOnDongBoundary() {
+        Polygon square = GEOMETRY_FACTORY.createPolygon(new Coordinate[]{
+                new Coordinate(126.9, 37.5),
+                new Coordinate(127.0, 37.5),
+                new Coordinate(127.0, 37.55),
+                new Coordinate(126.9, 37.55),
+                new Coordinate(126.9, 37.5)
+        });
+        GeoJsonFeature feature = new GeoJsonFeature(
+                "1111000000", "서울특별시 테스트구 테스트동", "11110", "테스트구", square);
+        ReflectionTestUtils.setField(service, "seoulFeatures", List.of(feature));
+
+        LookupResponse response = service.lookup(37.5, 126.95);
+
+        assertThat(response.regionName()).isEqualTo("테스트동");
+    }
+
+    @Test
+    void parseGeometry_keepsHoleForPolygon() throws Exception {
+        JsonNode geometryNode = new ObjectMapper().readTree("""
+                {
+                  "type": "Polygon",
+                  "coordinates": [
+                    [[0,0],[10,0],[10,10],[0,10],[0,0]],
+                    [[4,4],[6,4],[6,6],[4,6],[4,4]]
+                  ]
+                }
+                """);
+
+        Geometry geometry = (Geometry) ReflectionTestUtils.invokeMethod(service, "parseGeometry", geometryNode);
+
+        Polygon polygon = (Polygon) geometry;
+        assertThat(polygon.getNumInteriorRing()).isEqualTo(1);
+        assertThat(polygon.covers(point(5, 5))).isFalse();
+        assertThat(polygon.covers(point(1, 1))).isTrue();
+    }
+
+    @Test
+    void parseGeometry_keepsHoleForMultiPolygon() throws Exception {
+        JsonNode geometryNode = new ObjectMapper().readTree("""
+                {
+                  "type": "MultiPolygon",
+                  "coordinates": [
+                    [
+                      [[0,0],[10,0],[10,10],[0,10],[0,0]],
+                      [[4,4],[6,4],[6,6],[4,6],[4,4]]
+                    ]
+                  ]
+                }
+                """);
+
+        Geometry geometry = (Geometry) ReflectionTestUtils.invokeMethod(service, "parseGeometry", geometryNode);
+
+        MultiPolygon multiPolygon = (MultiPolygon) geometry;
+        Polygon polygon = (Polygon) multiPolygon.getGeometryN(0);
+        assertThat(polygon.getNumInteriorRing()).isEqualTo(1);
+        assertThat(multiPolygon.covers(point(5, 5))).isFalse();
+        assertThat(multiPolygon.covers(point(1, 1))).isTrue();
+    }
+
+    private static Point point(double x, double y) {
+        return GEOMETRY_FACTORY.createPoint(new Coordinate(x, y));
+    }
+}
