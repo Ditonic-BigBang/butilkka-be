@@ -68,4 +68,20 @@ public class User {
         user.createdAt = LocalDateTime.now();
         return user;
     }
+
+    public void updateStore(
+            String regionCode,
+            String categoryCode,
+            Double lat,
+            Double lng,
+            String storeName,
+            LocalDate storeOpenDate) {
+        this.storeRegion = regionCode;
+        this.categoryCode = categoryCode;
+        this.storeLat = lat;
+        this.storeLng = lng;
+        this.storeName = storeName;
+        this.storeOpenDate = storeOpenDate;
+        this.isOnboarded = true;
+    }
 }
