@@ -14,7 +14,7 @@
 - 모든 신규 응답은 `ApiResponse.ok(message, data)` / `ApiResponse.created(message, data)` 포맷을 따른다.
 - 신규 엔드포인트는 `SecurityConfig`의 `anyRequest().authenticated()`에 자동 포함되므로 `SecurityConfig` 변경은 불필요하다.
 - 상권 상세 API의 URI는 스펙 그대로 `/api/v1/districts/{districtsCode}`를 사용하되, path variable은 실제로는 상권코드(regionCode)로 취급한다.
-- 테스트는 실제 DB 없이 동작해야 한다 (서비스 테스트는 Mockito, 컨트롤러 테스트는 `@WebMvcTest` + `@MockitoBean`, `@AutoConfigureMockMvc(addFilters = false)`).
+- 테스트는 실제 DB 없이 동작해야 한다 (서비스 테스트는 Mockito, 컨트롤러 테스트는 `@WebMvcTest` + `@MockitoBean`, `@AutoConfigureMockMvc(addFilters = false)`). 단, `@AuthenticationPrincipal`을 사용하는 컨트롤러(Task 8의 `FavoriteController`)는 `addFilters = false`를 쓰지 않고 대신 `@Import(SecurityConfig.class)` + 기본 `@AutoConfigureMockMvc`를 사용한다 (해당 Task의 Step 7 참고).
 - 이 플랜은 별도로 진행 중인 온보딩 플랜(`2026-07-02-onboarding-api-region-migration.md`)과 파일이 겹치지 않도록 설계되었다. 단, DB 마이그레이션 버전 번호는 전역 순서이므로, **이 플랜의 마이그레이션(V20, V21)은 온보딩 플랜의 V19가 실제 DB에 적용된 뒤에 적용한다** (파일 작성/커밋은 순서 상관없지만, `./gradlew bootRun`으로 DB에 반영하는 시점은 V19 이후로 미룬다).
 
 ---
@@ -1976,17 +1976,21 @@ Expected: `BUILD SUCCESSFUL`
 
 - [ ] **Step 7: 실패하는 컨트롤러 테스트 작성**
 
+`@AuthenticationPrincipal`을 쓰는 컨트롤러는 `@AutoConfigureMockMvc(addFilters = false)`만으로는 `SecurityMockMvcRequestPostProcessors.authentication(...)`이 동작하지 않는다 (`@WebMvcTest`가 앱의 커스텀 `SecurityConfig`/`SecurityFilterChain`을 로드하지 않아 principal이 항상 null로 resolve됨 — 온보딩 플랜 Task 7에서 실제로 겪은 문제). 그래서 아래처럼 `@Import(SecurityConfig.class)`를 추가하고 `addFilters`는 기본값(true)으로 둔다.
+
 `src/test/java/bigbang/butilkka_be/user/FavoriteControllerTest.java`:
 
 ```java
 package bigbang.butilkka_be.user;
 
 import bigbang.butilkka_be.common.security.JwtTokenProvider;
+import bigbang.butilkka_be.common.security.SecurityConfig;
 import bigbang.butilkka_be.user.dto.FavoriteItem;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -2004,7 +2008,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(FavoriteController.class)
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
+@Import(SecurityConfig.class)
 class FavoriteControllerTest {
 
     @Autowired
