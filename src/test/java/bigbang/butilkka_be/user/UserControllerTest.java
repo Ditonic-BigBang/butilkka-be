@@ -47,13 +47,27 @@ class UserControllerTest {
     @Test
     void getMe_withValidRequest_returnsOk() throws Exception {
         when(userService.getMe(eq(1L)))
-                .thenReturn(new UserResponse(1L, "김민수", false));
+                .thenReturn(new UserResponse(1L, "김민수", false, null));
 
         mockMvc.perform(get("/api/v1/users/me")
                         .with(authentication(authAs("1")))
                         .contentType("application/json"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.name").value("김민수"));
+                .andExpect(jsonPath("$.data.name").value("김민수"))
+                .andExpect(jsonPath("$.data.store").doesNotExist());
+    }
+
+    @Test
+    void getMe_withStore_returnsStoreInfo() throws Exception {
+        when(userService.getMe(eq(1L)))
+                .thenReturn(new UserResponse(1L, "김민수", true,
+                        new UserResponse.StoreInfo("1168064000", "역삼1동", "CS100001", "한식음식점", 37.5, 127.03)));
+
+        mockMvc.perform(get("/api/v1/users/me")
+                        .with(authentication(authAs("1")))
+                        .contentType("application/json"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.store.regionName").value("역삼1동"));
     }
 
     @Test

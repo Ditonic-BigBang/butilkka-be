@@ -24,7 +24,7 @@ public class UserService {
     public UserResponse getMe(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> AppException.notFound("사용자를 찾을 수 없습니다"));
-        return UserResponse.from(user);
+        return UserResponse.of(user, buildStoreInfo(user));
     }
 
     @Transactional
@@ -46,5 +46,19 @@ public class UserService {
                 request.storeOpenDate());
 
         return StoreResponse.of(user, region.getRegionName(), category.getCategoryName());
+    }
+
+    private UserResponse.StoreInfo buildStoreInfo(User user) {
+        if (user.getStoreRegion() == null) {
+            return null;
+        }
+        Region region = regionRepository.findById(user.getStoreRegion())
+                .orElseThrow(() -> AppException.notFound("존재하지 않는 상권코드입니다"));
+        Category category = categoryRepository.findById(user.getCategoryCode())
+                .orElseThrow(() -> AppException.notFound("존재하지 않는 업종코드입니다"));
+        return new UserResponse.StoreInfo(
+                user.getStoreRegion(), region.getRegionName(),
+                user.getCategoryCode(), category.getCategoryName(),
+                user.getStoreLat(), user.getStoreLng());
     }
 }

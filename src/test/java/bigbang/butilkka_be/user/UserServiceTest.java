@@ -7,6 +7,7 @@ import bigbang.butilkka_be.region.Region;
 import bigbang.butilkka_be.region.RegionRepository;
 import bigbang.butilkka_be.user.dto.StoreResponse;
 import bigbang.butilkka_be.user.dto.StoreUpdateRequest;
+import bigbang.butilkka_be.user.dto.UserResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -33,6 +34,35 @@ class UserServiceTest {
 
     @InjectMocks
     private UserService userService;
+
+    @Test
+    void getMe_withStoreRegistered_includesStoreInfo() {
+        User user = User.create(1L, "김민수");
+        user.updateStore("1168064000", "CS100001", 37.5, 127.03, "민수네 한식당", LocalDate.of(2022, 3, 15));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        Region region = mock(Region.class);
+        when(region.getRegionName()).thenReturn("역삼1동");
+        Category category = mock(Category.class);
+        when(category.getCategoryName()).thenReturn("한식음식점");
+        when(regionRepository.findById("1168064000")).thenReturn(Optional.of(region));
+        when(categoryRepository.findById("CS100001")).thenReturn(Optional.of(category));
+
+        UserResponse response = userService.getMe(1L);
+
+        assertThat(response.store()).isNotNull();
+        assertThat(response.store().regionCode()).isEqualTo("1168064000");
+        assertThat(response.store().regionName()).isEqualTo("역삼1동");
+        assertThat(response.store().categoryName()).isEqualTo("한식음식점");
+    }
+
+    @Test
+    void getMe_withoutStore_returnsNullStore() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(User.create(1L, "김민수")));
+
+        UserResponse response = userService.getMe(1L);
+
+        assertThat(response.store()).isNull();
+    }
 
     @Test
     void updateStore_withValidCodes_updatesUserAndReturnsMergedResponse() {

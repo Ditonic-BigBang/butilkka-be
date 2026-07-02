@@ -5,9 +5,19 @@ import bigbang.butilkka_be.user.User;
 public record UserResponse(
         Long id,
         String name,
-        boolean isOnboarded
+        boolean isOnboarded,
+        StoreInfo store
 ) {
-    public static UserResponse from(User user) {
-        return new UserResponse(user.getId(), user.getName(), user.isOnboarded());
+    public record StoreInfo(
+            String regionCode,
+            String regionName,
+            String categoryCode,
+            String categoryName,
+            Double lat,
+            Double lng
+    ) {}
+
+    public static UserResponse of(User user, StoreInfo store) {
+        return new UserResponse(user.getId(), user.getName(), user.isOnboarded(), store);
     }
 }
