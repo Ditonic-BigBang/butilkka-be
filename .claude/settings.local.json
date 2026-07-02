@@ -1,7 +1,32 @@
 {
   "permissions": {
     "allow": [
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Skill(code-review)",
+      "Bash(cp \"src/main/resources/db/init/02_mock_data.sql\" \"src/main/resources/db/migration/V17__seed_mock_data.sql\")",
+      "Bash(rm \"src/main/resources/db/init/01_schema.sql\" \"src/main/resources/db/init/02_mock_data.sql\" \"src/main/resources/db/mock_data.sql\")",
+      "Bash(rmdir \"src/main/resources/db/init\")",
+      "Bash(./gradlew test *)",
+      "Bash(docker --version)",
+      "Bash(docker compose *)",
+      "Bash(DB_URL=\"jdbc:mysql://localhost:3307/butilkka?serverTimezone=Asia/Seoul&characterEncoding=UTF-8\" DB_USERNAME=root DB_PASSWORD=1234 ./gradlew bootRun --args='--server.port=8081')",
+      "Bash(echo \"started with pid $!\")",
+      "Bash(curl -sS -w \"\\\\nHTTP_STATUS:%{http_code}\\\\n\" \"http://localhost:8081/api/v1/lookup?lat=37.5665&lng=126.9780\")",
+      "Bash(curl -sS -w \"\\\\nHTTP_STATUS:%{http_code}\\\\n\" \"http://localhost:8081/api/v1/lookup?lng=126.9780\")",
+      "Bash(curl -sS -w \"\\\\nHTTP_STATUS:%{http_code}\\\\n\" \"http://localhost:8081/api/v1/lookup?lat=abc&lng=126.9780\")",
+      "Bash(docker exec butilkka-be-mysql-1 *)",
+      "Bash(taskkill //F //IM java.exe //T)",
+      "Bash(./gradlew clean *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(find .github -type f)",
+      "Bash(echo \"exists?: $?\")",
+      "Bash(git push *)",
+      "Bash(unzip -l /c/Users/wowns/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-test/4.1.0/f6c9cb2cc423397ce6c7c8ab5eb4296734290ad0/spring-boot-test-4.1.0.jar)",
+      "Bash(unzip -l /c/Users/wowns/.gradle/caches/modules-2/files-2.1/org.springframework/spring-test/7.0.8/a69fb470b6fbf2960552150e4a37e6903dbd2f49/spring-test-7.0.8.jar)",
+      "Bash(unzip -l /c/Users/wowns/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-webmvc-test/4.1.0/977bae6039a35c982cd1c75c991a9a55f45ec4d7/spring-boot-webmvc-test-4.1.0.jar)",
+      "Bash(netstat -ano)",
+      "Bash(unzip -l /c/Users/wowns/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-jdbc/4.1.0/71f00c6af0ae910530d9fce8f5ae6e54c595f690/spring-boot-jdbc-4.1.0.jar)"
     ]
   }
 }

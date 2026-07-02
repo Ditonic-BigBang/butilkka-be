@@ -10,7 +10,7 @@ public class ButilkkaBeApplication {
 
 	public static void main(String[] args) {
 		SpringApplication app = new SpringApplication(ButilkkaBeApplication.class);
-		app.addListeners(new FlywayMigrationListener());
+		app.addInitializers(context -> context.addBeanFactoryPostProcessor(new FlywayMigrationListener()));
 		app.run(args);
 	}
 

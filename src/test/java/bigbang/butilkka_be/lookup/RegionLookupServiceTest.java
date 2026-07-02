@@ -1,5 +1,6 @@
 package bigbang.butilkka_be.lookup;
 
+import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.lookup.dto.LookupResponse;
 import bigbang.butilkka_be.lookup.model.GeoJsonFeature;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,6 +18,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RegionLookupServiceTest {
 
@@ -41,6 +43,40 @@ class RegionLookupServiceTest {
         LookupResponse response = service.lookup(37.5, 126.95);
 
         assertThat(response.regionName()).isEqualTo("테스트동");
+    }
+
+    @Test
+    void lookup_withNaNLatitude_throwsBadRequest() {
+        assertThatThrownBy(() -> service.lookup(Double.NaN, 126.95))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getHttpStatus())
+                .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void lookup_withInfiniteLongitude_throwsBadRequest() {
+        assertThatThrownBy(() -> service.lookup(37.5, Double.POSITIVE_INFINITY))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getHttpStatus())
+                .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void lookup_withCoordinateOutsideSeoul_throwsBadRequest() {
+        assertThatThrownBy(() -> service.lookup(35.1796, 129.0756))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getHttpStatus())
+                .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void lookup_withNoMatchingFeature_throwsNotFound() {
+        ReflectionTestUtils.setField(service, "seoulFeatures", List.<GeoJsonFeature>of());
+
+        assertThatThrownBy(() -> service.lookup(37.5665, 126.9780))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getHttpStatus())
+                .isEqualTo(org.springframework.http.HttpStatus.NOT_FOUND);
     }
 
     @Test
