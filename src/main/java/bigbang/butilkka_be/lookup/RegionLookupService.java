@@ -112,26 +112,9 @@ public class RegionLookupService {
     }
 
     public LookupResponse lookup(double lat, double lng) {
-        if (Double.isNaN(lat) || Double.isNaN(lng) ||
-                Double.isInfinite(lat) || Double.isInfinite(lng)) {
-            throw AppException.badRequest("유효하지 않은 좌표값입니다");
-        }
+        GeoJsonFeature feature = findFeatureByCoordinate(lat, lng)
+                .orElseThrow(() -> AppException.notFound("해당 좌표에 대한 행정동 정보를 찾을 수 없습니다"));
 
-        if (lat < 37.41 || lat > 37.72 || lng < 126.73 || lng > 127.27) {
-            throw AppException.badRequest("서울 범위를 벗어난 좌표입니다");
-        }
-
-        Point point = geometryFactory.createPoint(new Coordinate(lng, lat));
-
-        Optional<GeoJsonFeature> matchingFeature = seoulFeatures.stream()
-                .filter(feature -> feature.geometry().covers(point))
-                .findFirst();
-
-        if (matchingFeature.isEmpty()) {
-            throw AppException.notFound("해당 좌표에 대한 행정동 정보를 찾을 수 없습니다");
-        }
-
-        GeoJsonFeature feature = matchingFeature.get();
         String dongName = extractDongName(feature.admName());
 
         return LookupResponse.of(
@@ -142,7 +125,34 @@ public class RegionLookupService {
         );
     }
 
-    private String extractDongName(String admName) {
+    public Optional<GeoJsonFeature> findFeatureByCoordinate(double lat, double lng) {
+        validateCoordinates(lat, lng);
+        Point point = geometryFactory.createPoint(new Coordinate(lng, lat));
+
+        return seoulFeatures.stream()
+                .filter(feature -> feature.geometry().covers(point))
+                .findFirst();
+    }
+
+    public List<GeoJsonFeature> searchByKeyword(String keyword) {
+        String normalized = keyword.trim();
+        return seoulFeatures.stream()
+                .filter(feature -> extractDongName(feature.admName()).contains(normalized))
+                .toList();
+    }
+
+    private void validateCoordinates(double lat, double lng) {
+        if (Double.isNaN(lat) || Double.isNaN(lng) ||
+                Double.isInfinite(lat) || Double.isInfinite(lng)) {
+            throw AppException.badRequest("유효하지 않은 좌표값입니다");
+        }
+
+        if (lat < 37.41 || lat > 37.72 || lng < 126.73 || lng > 127.27) {
+            throw AppException.badRequest("서울 범위를 벗어난 좌표입니다");
+        }
+    }
+
+    public static String extractDongName(String admName) {
         String[] parts = admName.split(" ");
         if (parts.length >= 3) {
             return parts[2];

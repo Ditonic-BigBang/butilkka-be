@@ -122,6 +122,35 @@ class RegionLookupServiceTest {
         assertThat(multiPolygon.covers(point(1, 1))).isTrue();
     }
 
+    @Test
+    void searchByKeyword_returnsMatchingFeatures() {
+        GeoJsonFeature feature = new GeoJsonFeature(
+                "1111000000", "서울특별시 테스트구 테스트동", "11110", "테스트구", point(127.0, 37.5));
+        ReflectionTestUtils.setField(service, "seoulFeatures", List.of(feature));
+
+        List<GeoJsonFeature> results = service.searchByKeyword("테스트");
+
+        assertThat(results).containsExactly(feature);
+    }
+
+    @Test
+    void searchByKeyword_withNoMatch_returnsEmptyList() {
+        ReflectionTestUtils.setField(service, "seoulFeatures", List.<GeoJsonFeature>of());
+
+        List<GeoJsonFeature> results = service.searchByKeyword("존재하지않음");
+
+        assertThat(results).isEmpty();
+    }
+
+    @Test
+    void findFeatureByCoordinate_withNoMatch_returnsEmptyOptional() {
+        ReflectionTestUtils.setField(service, "seoulFeatures", List.<GeoJsonFeature>of());
+
+        java.util.Optional<GeoJsonFeature> result = service.findFeatureByCoordinate(37.5665, 126.9780);
+
+        assertThat(result).isEmpty();
+    }
+
     private static Point point(double x, double y) {
         return GEOMETRY_FACTORY.createPoint(new Coordinate(x, y));
     }
