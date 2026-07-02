@@ -30,8 +30,14 @@ public class Report {
     @Column(nullable = false, columnDefinition = "TINYINT")
     private Integer quarter;
 
+    @Column(nullable = false, columnDefinition = "SMALLINT")
+    private Integer year;
+
     @Column(nullable = false, length = 1)
     private String grade;
+
+    @Column(nullable = false, columnDefinition = "TINYINT")
+    private Integer score;
 
     @Column(name = "decline_type", length = 20)
     private String declineType;

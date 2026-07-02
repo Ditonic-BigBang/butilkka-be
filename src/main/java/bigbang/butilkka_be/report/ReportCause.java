@@ -24,4 +24,7 @@ public class ReportCause {
 
     @Column(length = 10)
     private String level;
+
+    @Column(nullable = false, length = 255)
+    private String description;
 }

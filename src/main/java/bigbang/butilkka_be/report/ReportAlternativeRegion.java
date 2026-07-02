@@ -23,4 +23,7 @@ public class ReportAlternativeRegion {
 
     @Column(length = 255)
     private String reason;
+
+    @Column(nullable = false, length = 50)
+    private String stat;
 }
