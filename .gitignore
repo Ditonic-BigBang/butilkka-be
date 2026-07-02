@@ -38,3 +38,6 @@ out/
 
 ### Secrets ###
 src/main/resources/application-secret.properties
+
+### Superpowers scratch ###
+.superpowers/
