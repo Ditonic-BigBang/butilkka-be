@@ -27,6 +27,9 @@ public class CommercialStats {
     @Column(nullable = false, columnDefinition = "TINYINT")
     private Integer quarter;
 
+    @Column(nullable = false, columnDefinition = "SMALLINT")
+    private Integer year;
+
     @Column(name = "foot_traffic")
     private Integer footTraffic;
 

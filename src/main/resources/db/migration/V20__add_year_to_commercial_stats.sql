@@ -1,0 +1,5 @@
+ALTER TABLE commercial_stats
+    ADD COLUMN year SMALLINT NOT NULL DEFAULT 2026 COMMENT '연도' AFTER quarter;
+
+ALTER TABLE commercial_stats
+    ALTER COLUMN year DROP DEFAULT;
