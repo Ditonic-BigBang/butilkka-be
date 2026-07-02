@@ -5,6 +5,8 @@ import bigbang.butilkka_be.category.CategoryRepository;
 import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.region.Region;
 import bigbang.butilkka_be.region.RegionRepository;
+import bigbang.butilkka_be.user.dto.NotificationSettingsResponse;
+import bigbang.butilkka_be.user.dto.NotificationSettingsUpdateRequest;
 import bigbang.butilkka_be.user.dto.StoreResponse;
 import bigbang.butilkka_be.user.dto.StoreUpdateRequest;
 import bigbang.butilkka_be.user.dto.UserResponse;
@@ -194,5 +196,32 @@ class UserServiceTest {
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).getHttpStatus())
                 .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void getNotificationSettings_returnsCurrentSettings() {
+        User user = User.create(1L, "김민수");
+        user.updateNotificationSettings(true, true, false);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        NotificationSettingsResponse response = userService.getNotificationSettings(1L);
+
+        assertThat(response.smsAlert()).isTrue();
+        assertThat(response.autoReport()).isTrue();
+        assertThat(response.urgentAlert()).isFalse();
+    }
+
+    @Test
+    void updateNotificationSettings_withPartialFields_onlyChangesGivenFields() {
+        User user = User.create(1L, "김민수");
+        user.updateNotificationSettings(true, true, false);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        NotificationSettingsResponse response = userService.updateNotificationSettings(
+                1L, new NotificationSettingsUpdateRequest(null, null, true));
+
+        assertThat(response.smsAlert()).isTrue();
+        assertThat(response.autoReport()).isTrue();
+        assertThat(response.urgentAlert()).isTrue();
     }
 }

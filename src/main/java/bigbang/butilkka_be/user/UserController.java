@@ -1,6 +1,8 @@
 package bigbang.butilkka_be.user;
 
 import bigbang.butilkka_be.common.response.ApiResponse;
+import bigbang.butilkka_be.user.dto.NotificationSettingsResponse;
+import bigbang.butilkka_be.user.dto.NotificationSettingsUpdateRequest;
 import bigbang.butilkka_be.user.dto.StoreResponse;
 import bigbang.butilkka_be.user.dto.StoreUpdateRequest;
 import bigbang.butilkka_be.user.dto.UserResponse;
@@ -43,5 +45,20 @@ public class UserController {
             @RequestBody StoreUpdateRequest request) {
         StoreResponse response = userService.updateStore(Long.parseLong(userId), request);
         return ResponseEntity.ok(ApiResponse.ok("가게 정보 저장 성공", response));
+    }
+
+    @GetMapping("/me/notification-settings")
+    public ResponseEntity<ApiResponse<NotificationSettingsResponse>> getNotificationSettings(
+            @AuthenticationPrincipal String userId) {
+        NotificationSettingsResponse response = userService.getNotificationSettings(Long.parseLong(userId));
+        return ResponseEntity.ok(ApiResponse.ok("알림 설정 조회 성공", response));
+    }
+
+    @PatchMapping("/me/notification-settings")
+    public ResponseEntity<ApiResponse<NotificationSettingsResponse>> updateNotificationSettings(
+            @AuthenticationPrincipal String userId,
+            @RequestBody NotificationSettingsUpdateRequest request) {
+        NotificationSettingsResponse response = userService.updateNotificationSettings(Long.parseLong(userId), request);
+        return ResponseEntity.ok(ApiResponse.ok("알림 설정 변경 성공", response));
     }
 }

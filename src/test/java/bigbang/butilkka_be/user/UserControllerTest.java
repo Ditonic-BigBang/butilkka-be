@@ -2,6 +2,7 @@ package bigbang.butilkka_be.user;
 
 import bigbang.butilkka_be.common.security.JwtTokenProvider;
 import bigbang.butilkka_be.common.security.SecurityConfig;
+import bigbang.butilkka_be.user.dto.NotificationSettingsResponse;
 import bigbang.butilkka_be.user.dto.StoreResponse;
 import bigbang.butilkka_be.user.dto.UserResponse;
 import org.junit.jupiter.api.Test;
@@ -110,5 +111,34 @@ class UserControllerTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("김철수"));
+    }
+
+    @Test
+    void getNotificationSettings_returnsOk() throws Exception {
+        when(userService.getNotificationSettings(eq(1L)))
+                .thenReturn(new NotificationSettingsResponse(true, true, false));
+
+        mockMvc.perform(get("/api/v1/users/me/notification-settings")
+                        .with(authentication(authAs("1"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.smsAlert").value(true))
+                .andExpect(jsonPath("$.data.urgentAlert").value(false));
+    }
+
+    @Test
+    void updateNotificationSettings_withValidRequest_returnsOk() throws Exception {
+        when(userService.updateNotificationSettings(eq(1L), any()))
+                .thenReturn(new NotificationSettingsResponse(true, true, true));
+
+        mockMvc.perform(patch("/api/v1/users/me/notification-settings")
+                        .with(authentication(authAs("1")))
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "urgentAlert": true
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.urgentAlert").value(true));
     }
 }

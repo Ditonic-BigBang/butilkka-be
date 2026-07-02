@@ -96,4 +96,16 @@ public class User {
             this.storeLng = lng;
         }
     }
+
+    public void updateNotificationSettings(Boolean smsAlert, Boolean autoReport, Boolean urgentAlert) {
+        if (smsAlert != null) {
+            this.smsAlert = smsAlert;
+        }
+        if (autoReport != null) {
+            this.autoReport = autoReport;
+        }
+        if (urgentAlert != null) {
+            this.urgentAlert = urgentAlert;
+        }
+    }
 }

@@ -5,6 +5,8 @@ import bigbang.butilkka_be.category.CategoryRepository;
 import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.region.Region;
 import bigbang.butilkka_be.region.RegionRepository;
+import bigbang.butilkka_be.user.dto.NotificationSettingsResponse;
+import bigbang.butilkka_be.user.dto.NotificationSettingsUpdateRequest;
 import bigbang.butilkka_be.user.dto.StoreResponse;
 import bigbang.butilkka_be.user.dto.StoreUpdateRequest;
 import bigbang.butilkka_be.user.dto.UserResponse;
@@ -73,6 +75,20 @@ public class UserService {
         user.updateProfile(request.name(), regionCode, categoryCode, lat, lng);
 
         return UserResponse.of(user, buildStoreInfo(user));
+    }
+
+    public NotificationSettingsResponse getNotificationSettings(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> AppException.notFound("사용자를 찾을 수 없습니다"));
+        return NotificationSettingsResponse.from(user);
+    }
+
+    @Transactional
+    public NotificationSettingsResponse updateNotificationSettings(Long userId, NotificationSettingsUpdateRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> AppException.notFound("사용자를 찾을 수 없습니다"));
+        user.updateNotificationSettings(request.smsAlert(), request.autoReport(), request.urgentAlert());
+        return NotificationSettingsResponse.from(user);
     }
 
     private UserResponse.StoreInfo buildStoreInfo(User user) {
