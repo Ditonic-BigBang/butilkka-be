@@ -8,6 +8,7 @@ import bigbang.butilkka_be.region.RegionRepository;
 import bigbang.butilkka_be.user.dto.StoreResponse;
 import bigbang.butilkka_be.user.dto.StoreUpdateRequest;
 import bigbang.butilkka_be.user.dto.UserResponse;
+import bigbang.butilkka_be.user.dto.UserUpdateRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -110,6 +111,86 @@ class UserServiceTest {
                 "1168064000", "UNKNOWN", 37.5, 127.03, "가게", LocalDate.of(2022, 3, 15));
 
         assertThatThrownBy(() -> userService.updateStore(1L, request))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getHttpStatus())
+                .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void updateProfile_withNameOnly_updatesNameKeepsStore() {
+        User user = User.create(1L, "김민수");
+        user.updateStore("1168064000", "CS100001", 37.5, 127.03, "민수네 한식당", LocalDate.of(2022, 3, 15));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        Region region = mock(Region.class);
+        when(region.getRegionName()).thenReturn("역삼1동");
+        Category category = mock(Category.class);
+        when(category.getCategoryName()).thenReturn("한식음식점");
+        when(regionRepository.findById("1168064000")).thenReturn(Optional.of(region));
+        when(categoryRepository.findById("CS100001")).thenReturn(Optional.of(category));
+
+        UserResponse response = userService.updateProfile(1L, new UserUpdateRequest("김철수", null));
+
+        assertThat(response.name()).isEqualTo("김철수");
+        assertThat(response.store().regionCode()).isEqualTo("1168064000");
+        assertThat(user.isOnboarded()).isTrue();
+    }
+
+    @Test
+    void updateProfile_withStoreOnly_updatesStoreKeepsNameAndOnboardedFlag() {
+        User user = User.create(1L, "김민수");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        Region region = mock(Region.class);
+        when(region.getRegionName()).thenReturn("역삼1동");
+        Category category = mock(Category.class);
+        when(category.getCategoryName()).thenReturn("한식음식점");
+        when(regionRepository.findById("1168064000")).thenReturn(Optional.of(region));
+        when(categoryRepository.findById("CS100001")).thenReturn(Optional.of(category));
+
+        UserUpdateRequest.StoreUpdatePartial store =
+                new UserUpdateRequest.StoreUpdatePartial("1168064000", "CS100001", 37.5, 127.03);
+
+        UserResponse response = userService.updateProfile(1L, new UserUpdateRequest(null, store));
+
+        assertThat(response.name()).isEqualTo("김민수");
+        assertThat(response.store().regionName()).isEqualTo("역삼1동");
+        assertThat(user.isOnboarded()).isFalse();
+    }
+
+    @Test
+    void updateProfile_withNoFields_returnsUnchangedState() {
+        User user = User.create(1L, "김민수");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        UserResponse response = userService.updateProfile(1L, new UserUpdateRequest(null, null));
+
+        assertThat(response.name()).isEqualTo("김민수");
+        assertThat(response.store()).isNull();
+    }
+
+    @Test
+    void updateProfile_withUnknownRegionCode_throwsBadRequest() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(User.create(1L, "김민수")));
+        when(regionRepository.findById("UNKNOWN")).thenReturn(Optional.empty());
+
+        UserUpdateRequest.StoreUpdatePartial store =
+                new UserUpdateRequest.StoreUpdatePartial("UNKNOWN", "CS100001", 37.5, 127.03);
+
+        assertThatThrownBy(() -> userService.updateProfile(1L, new UserUpdateRequest(null, store)))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getHttpStatus())
+                .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void updateProfile_withUnknownCategoryCode_throwsBadRequest() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(User.create(1L, "김민수")));
+        when(regionRepository.findById("1168064000")).thenReturn(Optional.of(mock(Region.class)));
+        when(categoryRepository.findById("UNKNOWN")).thenReturn(Optional.empty());
+
+        UserUpdateRequest.StoreUpdatePartial store =
+                new UserUpdateRequest.StoreUpdatePartial("1168064000", "UNKNOWN", 37.5, 127.03);
+
+        assertThatThrownBy(() -> userService.updateProfile(1L, new UserUpdateRequest(null, store)))
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).getHttpStatus())
                 .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);

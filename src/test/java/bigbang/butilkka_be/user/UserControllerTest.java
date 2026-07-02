@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -92,5 +93,22 @@ class UserControllerTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.regionName").value("역삼1동"));
+    }
+
+    @Test
+    void updateProfile_withValidRequest_returnsOk() throws Exception {
+        when(userService.updateProfile(eq(1L), any()))
+                .thenReturn(new UserResponse(1L, "김철수", false, null));
+
+        mockMvc.perform(patch("/api/v1/users/me")
+                        .with(authentication(authAs("1")))
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "name": "김철수"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("김철수"));
     }
 }

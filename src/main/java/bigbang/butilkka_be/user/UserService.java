@@ -8,6 +8,7 @@ import bigbang.butilkka_be.region.RegionRepository;
 import bigbang.butilkka_be.user.dto.StoreResponse;
 import bigbang.butilkka_be.user.dto.StoreUpdateRequest;
 import bigbang.butilkka_be.user.dto.UserResponse;
+import bigbang.butilkka_be.user.dto.UserUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +47,32 @@ public class UserService {
                 request.storeOpenDate());
 
         return StoreResponse.of(user, region.getRegionName(), category.getCategoryName());
+    }
+
+    @Transactional
+    public UserResponse updateProfile(Long userId, UserUpdateRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> AppException.notFound("사용자를 찾을 수 없습니다"));
+
+        String regionCode = null;
+        String categoryCode = null;
+        Double lat = null;
+        Double lng = null;
+        if (request.store() != null) {
+            UserUpdateRequest.StoreUpdatePartial store = request.store();
+            regionRepository.findById(store.regionCode())
+                    .orElseThrow(() -> AppException.badRequest("존재하지 않는 상권코드 또는 업종 코드입니다"));
+            categoryRepository.findById(store.categoryCode())
+                    .orElseThrow(() -> AppException.badRequest("존재하지 않는 상권코드 또는 업종 코드입니다"));
+            regionCode = store.regionCode();
+            categoryCode = store.categoryCode();
+            lat = store.lat();
+            lng = store.lng();
+        }
+
+        user.updateProfile(request.name(), regionCode, categoryCode, lat, lng);
+
+        return UserResponse.of(user, buildStoreInfo(user));
     }
 
     private UserResponse.StoreInfo buildStoreInfo(User user) {

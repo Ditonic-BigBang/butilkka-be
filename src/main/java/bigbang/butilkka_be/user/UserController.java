@@ -4,10 +4,12 @@ import bigbang.butilkka_be.common.response.ApiResponse;
 import bigbang.butilkka_be.user.dto.StoreResponse;
 import bigbang.butilkka_be.user.dto.StoreUpdateRequest;
 import bigbang.butilkka_be.user.dto.UserResponse;
+import bigbang.butilkka_be.user.dto.UserUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,6 +27,14 @@ public class UserController {
             @AuthenticationPrincipal String userId) {
         UserResponse response = userService.getMe(Long.parseLong(userId));
         return ResponseEntity.ok(ApiResponse.ok("사용자 정보 조회 성공", response));
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> updateProfile(
+            @AuthenticationPrincipal String userId,
+            @RequestBody UserUpdateRequest request) {
+        UserResponse response = userService.updateProfile(Long.parseLong(userId), request);
+        return ResponseEntity.ok(ApiResponse.ok("사용자 정보 수정 성공", response));
     }
 
     @PutMapping("/me/store")

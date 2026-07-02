@@ -84,4 +84,16 @@ public class User {
         this.storeOpenDate = storeOpenDate;
         this.isOnboarded = true;
     }
+
+    public void updateProfile(String name, String regionCode, String categoryCode, Double lat, Double lng) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (regionCode != null) {
+            this.storeRegion = regionCode;
+            this.categoryCode = categoryCode;
+            this.storeLat = lat;
+            this.storeLng = lng;
+        }
+    }
 }
