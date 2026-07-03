@@ -6,8 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 
 import java.util.List;
 
@@ -16,7 +14,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class ReportHistoryServiceTest {
 
     @Mock
@@ -58,10 +55,18 @@ class ReportHistoryServiceTest {
 
     @Test
     void getHistory_appliesOffsetAndLimit() {
-        Report q1 = reportOf(5L, 2026, 1, "B", "1분기 요약");
+        // q1 and q4 are sorted but skipped by pagination, so only need year/quarter for sorting
+        Report q1 = mock(Report.class);
+        when(q1.getYear()).thenReturn(2026);
+        when(q1.getQuarter()).thenReturn(1);
+
+        Report q4 = mock(Report.class);
+        when(q4.getYear()).thenReturn(2026);
+        when(q4.getQuarter()).thenReturn(4);
+
+        // q2 and q3 are in the result, so need full stubs
         Report q2 = reportOf(6L, 2026, 2, "A", "2분기 요약");
         Report q3 = reportOf(7L, 2026, 3, "C", "3분기 요약");
-        Report q4 = reportOf(1L, 2026, 4, "A", "4분기 요약");
         when(reportRepository.findByUserId(1L)).thenReturn(List.of(q1, q2, q3, q4));
 
         ReportHistoryResponse response = service.getHistory(1L, 1, 2);
