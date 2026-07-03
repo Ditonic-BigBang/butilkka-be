@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import bigbang.butilkka_be.report.dto.ReportCaseListResponse;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.eq;
@@ -32,6 +33,9 @@ class ReportControllerTest {
 
     @MockitoBean
     private ReportDetailService reportDetailService;
+
+    @MockitoBean
+    private ReportCaseService reportCaseService;
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
@@ -67,5 +71,20 @@ class ReportControllerTest {
                         .with(authentication(authAs("1"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.quarter").value("2026Q4"));
+    }
+
+    @Test
+    void getCases_returnsOk() throws Exception {
+        when(reportCaseService.getCases(eq(1L), eq(1L), eq(0), eq(20))).thenReturn(
+                new bigbang.butilkka_be.report.dto.ReportCaseListResponse(1, List.of(
+                        new bigbang.butilkka_be.report.dto.ReportCaseListResponse.ReportCaseItem(
+                                "case-1", "1168051000", "신사동", "요약", "상세 설명",
+                                "태그1", "태그2", "태그3", "태그4",
+                                new bigbang.butilkka_be.report.dto.ReportCaseListResponse.Period(2019, 2022)))));
+
+        mockMvc.perform(get("/api/v1/reports/1/cases")
+                        .with(authentication(authAs("1"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.cases[0].regionName").value("신사동"));
     }
 }

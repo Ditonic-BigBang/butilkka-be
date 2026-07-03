@@ -1,0 +1,44 @@
+package bigbang.butilkka_be.report;
+
+import bigbang.butilkka_be.common.exception.AppException;
+import bigbang.butilkka_be.region.Region;
+import bigbang.butilkka_be.region.RegionRepository;
+import bigbang.butilkka_be.report.dto.ReportCaseListResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class ReportCaseService {
+
+    private final ReportRepository reportRepository;
+    private final ReportSimilarCaseRepository reportSimilarCaseRepository;
+    private final RegionRepository regionRepository;
+
+    public ReportCaseListResponse getCases(Long userId, Long reportId, int offset, int limit) {
+        Report report = reportRepository.findById(reportId)
+                .filter(r -> r.getUserId().equals(userId))
+                .orElseThrow(() -> AppException.notFound("존재하지 않는 리포트입니다."));
+
+        List<ReportSimilarCase> all = reportSimilarCaseRepository.findByReportId(report.getReportId());
+
+        List<ReportCaseListResponse.ReportCaseItem> page = all.stream()
+                .skip(offset)
+                .limit(limit)
+                .map(this::toCaseItem)
+                .toList();
+
+        return new ReportCaseListResponse(all.size(), page);
+    }
+
+    private ReportCaseListResponse.ReportCaseItem toCaseItem(ReportSimilarCase c) {
+        Region region = regionRepository.findById(c.getRegionCode())
+                .orElseThrow(() -> AppException.notFound("존재하지 않는 상권코드입니다."));
+        return new ReportCaseListResponse.ReportCaseItem(
+                c.getId(), c.getRegionCode(), region.getRegionName(), c.getSummary(), c.getDescription(),
+                c.getTag1(), c.getTag2(), c.getTag3(), c.getTag4(),
+                new ReportCaseListResponse.Period(c.getStartYear(), c.getEndYear()));
+    }
+}
