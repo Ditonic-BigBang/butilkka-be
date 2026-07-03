@@ -16,6 +16,7 @@
 4. **404 `"등록된 가게 정보가 없습니다."`의 범위**: 유저가 가게를 등록하지 않은 경우(`User.storeRegion == null`)와, 가게는 등록했지만 해당 상권코드의 `CommercialStats` 데이터가 아직 하나도 없는 경우를 **동일하게 404로 처리**한다. 시드 데이터가 특정 상권(약 15개)에만 존재하므로 이 케이스가 실제로 자주 발생할 수 있다 — 두 경우 모두 프론트 입장에서는 "대시보드를 볼 수 없다"는 동일한 결과이므로 스펙의 단일 메시지로 충분하다고 판단했다.
 5. **`gaugeValue` 산출**: `CommercialStats.declineGrade`를 리포트 화면과 동일한 고정 매핑(A=90/B=70/C=50/D=30/E=10)으로 변환한다. 마이그레이션 없이 서비스 코드에서 매핑한다.
 6. **`metrics`의 3개 지표(`footTraffic`/`storeCount`/`closureRate`) 구조가 스펙상 동일**하므로, 공통 `MetricTrend(direction, delta, gap, points[])` 레코드 하나를 재사용한다.
+7. **널 안전성**: `CommercialStats`의 `footTraffic`/`storeCount`/`closureRate`와 `*_delta`/`*_gap` 컬럼은 전부 nullable이다(현재 시드 데이터는 항상 값이 채워져 있지만 스키마상 NULL이 가능하다). 리포트 화면 최종 리뷰에서 nullable DB 컬럼을 non-null Java 기본형으로 언박싱해 NPE 위험이 생겼던 것과 동일한 문제를 피하기 위해, `MetricTrend.delta`/`gap`과 `Point.value`는 각각 `Double`/`Long`(boxed)로 선언한다.
 
 ## 1. `GET /api/v1/dashboard`
 
@@ -50,8 +51,8 @@ public record DashboardResponse(
     public record StoreInfo(String regionCode, String regionName, String categoryName, String district) {}
     public record Grade(String current, String previous, int gaugeValue) {}
     public record Metrics(MetricTrend footTraffic, MetricTrend storeCount, MetricTrend closureRate) {}
-    public record MetricTrend(String direction, double delta, long gap, List<Point> points) {}
-    public record Point(String quarter, double value) {}
+    public record MetricTrend(String direction, Double delta, Long gap, List<Point> points) {}
+    public record Point(String quarter, Double value) {}
 }
 ```
 
