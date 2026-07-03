@@ -10,22 +10,7 @@ Notion "API명세서 V2" (https://app.notion.com/p/46d6004f3133832ba3e18185e637e
 | 온보딩 | 3/3 | 완료 (`docs/superpowers/plans/2026-07-02-onboarding-api-region-migration.md`, Task 1~9) |
 | 지도/상권 | 7/7 | 완료 (`docs/superpowers/plans/2026-07-02-map-district-api.md`, Task 1~9) |
 | 마이페이지 | 4/4 | 완료, push 완료 (`docs/superpowers/plans/2026-07-02-mypage-api.md`, Task 1~4, 커밋 `da61339..9246eae`) |
-
-## 진행 중: 리포트 화면 (4개 API)
-
-- 설계: `docs/superpowers/specs/2026-07-02-report-api-design.md` (승인 완료)
-- 플랜: `docs/superpowers/plans/2026-07-02-report-api.md` (Task 1~5)
-- 진행 상태:
-  - **Task 1 (V22 마이그레이션: reports.year/score, report_cause.description, report_alternative_regions.stat 추가): 구현 완료, 로컬 커밋 `ff19cf7`, 아직 리뷰 전, 아직 push 안 됨**
-  - Task 2 (`GET /reports/latest`, `GET /reports/{reportId}`): 미착수
-  - Task 3 (`GET /reportsHistory`): 미착수
-  - Task 4 (`GET /reports/{reportId}/cases`): 미착수
-  - Task 5 (전체 검증): 미착수
-
-### 다음에 할 일 (재개 시)
-1. Task 1 리뷰 진행 (review-package 생성 → 리뷰어 디스패치 → 원장(`​.superpowers/sdd/progress-report.md`, git-ignored) 갱신)
-2. Task 2~5를 subagent-driven-development로 순서대로 진행
-3. 리포트 완료 후 push
+| 리포트 | 4/4 | 완료, push 완료 (`docs/superpowers/plans/2026-07-02-report-api.md`, Task 1~5, 커밋 `ff19cf7..3d48764`, subagent-driven-development로 진행. Task별 리뷰 전부 Approved, 최종 whole-branch 리뷰(Opus)에서 나온 Important 2건(offset/limit 음수 처리, similarCase 기간 null 처리)은 `3d48764`에서 수정 완료. Notion "API명세서 V2" 4개 페이지 직접 대조 완료 - 필드/메시지 전부 스펙 일치) |
 
 ## 아직 설계도 안 한 화면
 
