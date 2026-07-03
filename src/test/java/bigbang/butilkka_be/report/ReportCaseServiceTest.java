@@ -151,4 +151,52 @@ class ReportCaseServiceTest {
                 .extracting(e -> ((AppException) e).getHttpStatus())
                 .isEqualTo(org.springframework.http.HttpStatus.NOT_FOUND);
     }
+
+    @Test
+    void getCases_withNegativeOffset_throwsBadRequest() {
+        assertThatThrownBy(() -> service.getCases(1L, 1L, -1, 20))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getHttpStatus())
+                .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void getCases_withNegativeLimit_throwsBadRequest() {
+        assertThatThrownBy(() -> service.getCases(1L, 1L, 0, -1))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getHttpStatus())
+                .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void getCases_withNullStartAndEndYear_returnsNullPeriodFields() {
+        Report report = mock(Report.class, withSettings().lenient());
+        doReturn(1L).when(report).getReportId();
+        doReturn(1L).when(report).getUserId();
+        when(reportRepository.findById(1L)).thenReturn(Optional.of(report));
+
+        ReportSimilarCase c = mock(ReportSimilarCase.class, withSettings().lenient());
+        doReturn("case-1").when(c).getId();
+        doReturn("1168051000").when(c).getRegionCode();
+        doReturn("요약").when(c).getSummary();
+        doReturn("상세 설명").when(c).getDescription();
+        doReturn("태그1").when(c).getTag1();
+        doReturn("태그2").when(c).getTag2();
+        doReturn("태그3").when(c).getTag3();
+        doReturn("태그4").when(c).getTag4();
+        doReturn(null).when(c).getStartYear();
+        doReturn(null).when(c).getEndYear();
+
+        when(reportSimilarCaseRepository.findByReportId(1L)).thenReturn(List.of(c));
+
+        Region region = mock(Region.class);
+        when(region.getRegionName()).thenReturn("신사동");
+        when(regionRepository.findById("1168051000")).thenReturn(Optional.of(region));
+
+        ReportCaseListResponse response = service.getCases(1L, 1L, 0, 20);
+
+        assertThat(response.cases()).hasSize(1);
+        assertThat(response.cases().get(0).period().startYear()).isNull();
+        assertThat(response.cases().get(0).period().endYear()).isNull();
+    }
 }

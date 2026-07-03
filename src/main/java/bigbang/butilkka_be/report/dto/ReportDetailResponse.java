@@ -24,7 +24,7 @@ public record ReportDetailResponse(
 
     public record Signal(String title, String description) {}
 
-    public record Period(int startYear, int endYear) {}
+    public record Period(Integer startYear, Integer endYear) {}
 
     public record SimilarCasePreview(String caseId, String regionCode, String regionName, String summary, Period period) {}
 

@@ -238,4 +238,32 @@ class ReportDetailServiceTest {
         lenient().when(c.getEndYear()).thenReturn((short) 2022);
         return c;
     }
+
+    @Test
+    void getDetail_withNullStartAndEndYear_returnsNullPeriodFields() {
+        Report report = reportOf(1L, 1L, 2026, 4, "A", 90);
+        when(reportRepository.findById(1L)).thenReturn(Optional.of(report));
+        stubRegionAndCategory();
+        when(reportCauseRepository.findByReportId(1L)).thenReturn(List.of());
+        when(reportSignalRepository.findByReportId(1L)).thenReturn(List.of());
+        when(reportAlternativeRegionRepository.findByReportId(1L)).thenReturn(List.of());
+
+        ReportSimilarCase c = mock(ReportSimilarCase.class);
+        lenient().when(c.getId()).thenReturn("case-1");
+        lenient().when(c.getRegionCode()).thenReturn("1168051000");
+        lenient().when(c.getSummary()).thenReturn("사례1");
+        lenient().when(c.getStartYear()).thenReturn(null);
+        lenient().when(c.getEndYear()).thenReturn(null);
+        when(reportSimilarCaseRepository.findByReportId(1L)).thenReturn(List.of(c));
+
+        Region caseRegion = mock(Region.class);
+        when(caseRegion.getRegionName()).thenReturn("신사동");
+        when(regionRepository.findById("1168051000")).thenReturn(Optional.of(caseRegion));
+
+        ReportDetailResponse response = service.getDetail(1L, 1L);
+
+        assertThat(response.similarCases()).hasSize(1);
+        assertThat(response.similarCases().get(0).period().startYear()).isNull();
+        assertThat(response.similarCases().get(0).period().endYear()).isNull();
+    }
 }

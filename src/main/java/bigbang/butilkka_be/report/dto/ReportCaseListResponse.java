@@ -19,5 +19,5 @@ public record ReportCaseListResponse(
             Period period
     ) {}
 
-    public record Period(int startYear, int endYear) {}
+    public record Period(Integer startYear, Integer endYear) {}
 }

@@ -99,7 +99,11 @@ public class ReportDetailService {
                 .orElseThrow(() -> AppException.notFound("존재하지 않는 상권코드입니다."));
         return new ReportDetailResponse.SimilarCasePreview(
                 c.getId(), c.getRegionCode(), region.getRegionName(), c.getSummary(),
-                new ReportDetailResponse.Period(c.getStartYear(), c.getEndYear()));
+                new ReportDetailResponse.Period(toNullableInt(c.getStartYear()), toNullableInt(c.getEndYear())));
+    }
+
+    private static Integer toNullableInt(Short value) {
+        return value == null ? null : value.intValue();
     }
 
     private ReportDetailResponse.AlternativeRegion toAlternativeRegion(ReportAlternativeRegion a, int rank) {

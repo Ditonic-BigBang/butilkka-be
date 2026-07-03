@@ -18,6 +18,10 @@ public class ReportCaseService {
     private final RegionRepository regionRepository;
 
     public ReportCaseListResponse getCases(Long userId, Long reportId, int offset, int limit) {
+        if (offset < 0 || limit < 0) {
+            throw AppException.badRequest("offset과 limit은 0 이상이어야 합니다.");
+        }
+
         Report report = reportRepository.findById(reportId)
                 .filter(r -> r.getUserId().equals(userId))
                 .orElseThrow(() -> AppException.notFound("존재하지 않는 리포트입니다."));
@@ -39,6 +43,10 @@ public class ReportCaseService {
         return new ReportCaseListResponse.ReportCaseItem(
                 c.getId(), c.getRegionCode(), region.getRegionName(), c.getSummary(), c.getDescription(),
                 c.getTag1(), c.getTag2(), c.getTag3(), c.getTag4(),
-                new ReportCaseListResponse.Period(c.getStartYear(), c.getEndYear()));
+                new ReportCaseListResponse.Period(toNullableInt(c.getStartYear()), toNullableInt(c.getEndYear())));
+    }
+
+    private static Integer toNullableInt(Short value) {
+        return value == null ? null : value.intValue();
     }
 }

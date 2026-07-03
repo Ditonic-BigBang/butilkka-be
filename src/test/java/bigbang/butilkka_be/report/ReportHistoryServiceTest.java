@@ -1,5 +1,6 @@
 package bigbang.butilkka_be.report;
 
+import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.report.dto.ReportHistoryResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -87,5 +89,21 @@ class ReportHistoryServiceTest {
         assertThat(response.totalCount()).isEqualTo(0);
         assertThat(response.hasNext()).isFalse();
         assertThat(response.reports()).isEmpty();
+    }
+
+    @Test
+    void getHistory_withNegativeOffset_throwsBadRequest() {
+        assertThatThrownBy(() -> service.getHistory(1L, -1, 20))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getHttpStatus())
+                .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void getHistory_withNegativeLimit_throwsBadRequest() {
+        assertThatThrownBy(() -> service.getHistory(1L, 0, -1))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getHttpStatus())
+                .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
     }
 }
