@@ -47,4 +47,8 @@ public class Notification {
         notification.sentAt = LocalDateTime.now();
         return notification;
     }
+
+    public void markAsRead() {
+        this.isRead = true;
+    }
 }

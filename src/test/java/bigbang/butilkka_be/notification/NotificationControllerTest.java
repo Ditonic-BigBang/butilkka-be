@@ -3,6 +3,7 @@ package bigbang.butilkka_be.notification;
 import bigbang.butilkka_be.common.security.JwtTokenProvider;
 import bigbang.butilkka_be.common.security.SecurityConfig;
 import bigbang.butilkka_be.notification.dto.NotificationListResponse;
+import bigbang.butilkka_be.notification.dto.NotificationReadResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -20,6 +21,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -67,5 +69,17 @@ class NotificationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalCount").value(10))
                 .andExpect(jsonPath("$.data.hasNext").value(true));
+    }
+
+    @Test
+    void markAsRead_returnsOk() throws Exception {
+        when(notificationService.markAsRead(eq(1L), eq(301L))).thenReturn(
+                new NotificationReadResponse(301L, true));
+
+        mockMvc.perform(patch("/api/v1/notifications/301")
+                        .with(authentication(authAs("1"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.notificationId").value(301))
+                .andExpect(jsonPath("$.data.isRead").value(true));
     }
 }

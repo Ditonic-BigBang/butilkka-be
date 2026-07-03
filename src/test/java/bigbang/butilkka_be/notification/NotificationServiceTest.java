@@ -2,6 +2,7 @@ package bigbang.butilkka_be.notification;
 
 import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.notification.dto.NotificationListResponse;
+import bigbang.butilkka_be.notification.dto.NotificationReadResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,11 +11,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -104,5 +107,56 @@ class NotificationServiceTest {
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).getHttpStatus())
                 .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void markAsRead_withOwnedUnreadNotification_marksAndReturnsRead() {
+        Notification notification = mock(Notification.class);
+        when(notification.getNotificationId()).thenReturn(301L);
+        when(notification.getUserId()).thenReturn(1L);
+        when(notificationRepository.findById(301L)).thenReturn(Optional.of(notification));
+
+        NotificationReadResponse response = service.markAsRead(1L, 301L);
+
+        verify(notification).markAsRead();
+        assertThat(response.notificationId()).isEqualTo(301L);
+        assertThat(response.isRead()).isTrue();
+    }
+
+    @Test
+    void markAsRead_calledTwice_isIdempotent() {
+        Notification notification = mock(Notification.class);
+        when(notification.getNotificationId()).thenReturn(301L);
+        when(notification.getUserId()).thenReturn(1L);
+        when(notificationRepository.findById(301L)).thenReturn(Optional.of(notification));
+
+        NotificationReadResponse first = service.markAsRead(1L, 301L);
+        NotificationReadResponse second = service.markAsRead(1L, 301L);
+
+        verify(notification, org.mockito.Mockito.times(2)).markAsRead();
+        assertThat(first.isRead()).isTrue();
+        assertThat(second.isRead()).isTrue();
+    }
+
+    @Test
+    void markAsRead_withOtherUsersNotification_throwsNotFound() {
+        Notification notification = mock(Notification.class);
+        when(notification.getUserId()).thenReturn(2L);
+        when(notificationRepository.findById(301L)).thenReturn(Optional.of(notification));
+
+        assertThatThrownBy(() -> service.markAsRead(1L, 301L))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getHttpStatus())
+                .isEqualTo(org.springframework.http.HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void markAsRead_withUnknownNotificationId_throwsNotFound() {
+        when(notificationRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.markAsRead(1L, 999L))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getHttpStatus())
+                .isEqualTo(org.springframework.http.HttpStatus.NOT_FOUND);
     }
 }
