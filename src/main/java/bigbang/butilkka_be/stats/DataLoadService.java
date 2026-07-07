@@ -161,6 +161,10 @@ public class DataLoadService {
              CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(reader)) {
 
             for (CSVRecord r : parser) {
+                // ALL(전체)만 사용
+                String category = r.get("카테고리");
+                if (!"전체".equals(category)) continue;
+
                 String regionCode = r.get("행정동코드") + "00";
                 String quarter    = r.get("분기코드");
                 String key        = regionCode + "|" + quarter;
