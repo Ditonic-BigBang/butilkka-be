@@ -52,9 +52,9 @@ public class DashboardService {
                 latest.getDeclineGrade(), previousGrade, gaugeValueOf(latest.getDeclineGrade()));
 
         DashboardResponse.Metrics metrics = new DashboardResponse.Metrics(
-                trendOf(history, latest.getFootTrafficDelta(), latest.getFootTrafficGap(), CommercialStats::getFootTraffic),
-                trendOf(history, latest.getStoreCountDelta(), latest.getStoreCountGap(), CommercialStats::getStoreCount),
-                trendOf(history, latest.getClosureRateDelta(), latest.getClosureRateGap(), CommercialStats::getClosureRate));
+                trendOf(history, latest.getFootTrafficDelta(), latest.getFootTrafficGap(), CommercialStats::getFootTraffic, "만명"),
+                trendOf(history, latest.getStoreCountDelta(), latest.getStoreCountGap(), CommercialStats::getStoreCount, "개"),
+                trendOf(history, latest.getClosureRateDelta(), latest.getClosureRateGap(), CommercialStats::getClosureRate, "%p"));
 
         return new DashboardResponse(store, grade, latest.getBriefing(), metrics);
     }
@@ -86,10 +86,11 @@ public class DashboardService {
 
     private DashboardResponse.MetricTrend trendOf(
             List<CommercialStats> history, BigDecimal delta, Long gap,
-            Function<CommercialStats, Number> valueExtractor) {
+            Function<CommercialStats, Number> valueExtractor, String unit) {
         String direction = (delta != null && delta.signum() < 0) ? "DOWN" : "UP";
         Double deltaAbs = delta == null ? null : Math.abs(delta.doubleValue());
         Long gapAbs = gap == null ? null : Math.abs(gap);
+        String gapText = formatGapText(gapAbs, unit);
 
         List<DashboardResponse.Point> points = history.stream()
                 .skip(Math.max(0, history.size() - 3))
@@ -97,7 +98,18 @@ public class DashboardService {
                         stats.getYear() + "Q" + stats.getQuarter(), toDouble(valueExtractor.apply(stats))))
                 .toList();
 
-        return new DashboardResponse.MetricTrend(direction, deltaAbs, gapAbs, points);
+        return new DashboardResponse.MetricTrend(direction, deltaAbs, gapAbs, gapText, points);
+    }
+
+    private String formatGapText(Long gap, String unit) {
+        if (gap == null) {
+            return null;
+        }
+        if ("만명".equals(unit)) {
+            double inMan = gap / 10000.0;
+            return String.format("%.1f %s", inMan, unit).replace(".", ",");
+        }
+        return gap + " " + unit;
     }
 
     private Double toDouble(Number number) {

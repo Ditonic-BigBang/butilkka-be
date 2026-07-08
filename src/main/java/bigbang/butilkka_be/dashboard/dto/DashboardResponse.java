@@ -14,7 +14,7 @@ public record DashboardResponse(
 
     public record Metrics(MetricTrend footTraffic, MetricTrend storeCount, MetricTrend closureRate) {}
 
-    public record MetricTrend(String direction, Double delta, Long gap, List<Point> points) {}
+    public record MetricTrend(String direction, Double delta, Long gap, String gapText, List<Point> points) {}
 
     public record Point(String quarter, Double value) {}
 }

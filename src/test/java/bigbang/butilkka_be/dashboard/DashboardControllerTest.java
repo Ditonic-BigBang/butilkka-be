@@ -42,7 +42,7 @@ class DashboardControllerTest {
 
     private static DashboardResponse sampleResponse() {
         DashboardResponse.MetricTrend trend = new DashboardResponse.MetricTrend(
-                "DOWN", 5.5, 6170L, List.of(new DashboardResponse.Point("2026Q3", 121940.0)));
+                "DOWN", 5.5, 6170L, "0,6 만명", List.of(new DashboardResponse.Point("2026Q3", 121940.0)));
         return new DashboardResponse(
                 new DashboardResponse.StoreInfo("1168064000", "역삼1동", "한식음식점", "강남구"),
                 new DashboardResponse.Grade("C", "B", 50),

@@ -132,6 +132,7 @@ class DashboardServiceTest {
         assertThat(response.metrics().footTraffic().direction()).isEqualTo("DOWN");
         assertThat(response.metrics().footTraffic().delta()).isEqualTo(5.5);
         assertThat(response.metrics().footTraffic().gap()).isEqualTo(6170L);
+        assertThat(response.metrics().footTraffic().gapText()).isEqualTo("0,6 만명");
         assertThat(response.metrics().footTraffic().points()).hasSize(3);
         assertThat(response.metrics().footTraffic().points().get(0).quarter()).isEqualTo("2026Q1");
         assertThat(response.metrics().footTraffic().points().get(0).value()).isEqualTo(128110.0);
@@ -141,10 +142,12 @@ class DashboardServiceTest {
         assertThat(response.metrics().storeCount().direction()).isEqualTo("UP");
         assertThat(response.metrics().storeCount().delta()).isEqualTo(0.7);
         assertThat(response.metrics().storeCount().gap()).isEqualTo(3L);
+        assertThat(response.metrics().storeCount().gapText()).isEqualTo("3 개");
 
         assertThat(response.metrics().closureRate().direction()).isEqualTo("UP");
         assertThat(response.metrics().closureRate().delta()).isEqualTo(0.0);
         assertThat(response.metrics().closureRate().gap()).isEqualTo(0L);
+        assertThat(response.metrics().closureRate().gapText()).isEqualTo("0 %p");
         assertThat(response.metrics().closureRate().points().get(2).value()).isEqualTo(3.9);
     }
 
@@ -205,6 +208,7 @@ class DashboardServiceTest {
         assertThat(response.metrics().footTraffic().direction()).isEqualTo("UP");
         assertThat(response.metrics().footTraffic().delta()).isNull();
         assertThat(response.metrics().footTraffic().gap()).isNull();
+        assertThat(response.metrics().footTraffic().gapText()).isNull();
         assertThat(response.metrics().footTraffic().points().get(0).value()).isNull();
     }
 }
