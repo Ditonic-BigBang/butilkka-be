@@ -71,13 +71,16 @@ public class DashboardService {
     }
 
     private int gaugeValueOf(String grade) {
+        if (grade == null) {
+            return 50; // 기본값: C등급 수준
+        }
         return switch (grade) {
             case "A" -> 90;
             case "B" -> 70;
             case "C" -> 50;
             case "D" -> 30;
             case "E" -> 10;
-            default -> throw new IllegalStateException("알 수 없는 상권 등급: " + grade);
+            default -> 50;
         };
     }
 

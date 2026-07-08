@@ -2,6 +2,8 @@ package bigbang.butilkka_be.user.dto;
 
 import bigbang.butilkka_be.user.User;
 
+import java.time.LocalDate;
+
 public record UserResponse(
         Long id,
         String name,
@@ -14,7 +16,10 @@ public record UserResponse(
             String categoryCode,
             String categoryName,
             Double lat,
-            Double lng
+            Double lng,
+            String storeName,
+            String address,
+            LocalDate storeOpenDate
     ) {}
 
     public static UserResponse of(User user, StoreInfo store) {

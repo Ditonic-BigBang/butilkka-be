@@ -1,8 +1,8 @@
-package bigbang.butilkka_be.user.dto;
+package bigbang.butilkka_be.store.dto;
 
 import java.time.LocalDate;
 
-public record StoreUpdateRequest(
+public record CreateStoreRequest(
         String regionCode,
         String categoryCode,
         Double lat,

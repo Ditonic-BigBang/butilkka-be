@@ -75,12 +75,14 @@ public class User {
             Double lat,
             Double lng,
             String storeName,
+            String storeAddress,
             LocalDate storeOpenDate) {
         this.storeRegion = regionCode;
         this.categoryCode = categoryCode;
         this.storeLat = lat;
         this.storeLng = lng;
         this.storeName = storeName;
+        this.storeAddress = storeAddress;
         this.storeOpenDate = storeOpenDate;
         this.isOnboarded = true;
     }
@@ -107,5 +109,9 @@ public class User {
         if (urgentAlert != null) {
             this.urgentAlert = urgentAlert;
         }
+    }
+
+    public void completeOnboarding() {
+        this.isOnboarded = true;
     }
 }

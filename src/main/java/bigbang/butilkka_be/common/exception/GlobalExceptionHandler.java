@@ -9,8 +9,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -49,6 +51,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
+        log.error("서버 오류 발생", e);
         return ResponseEntity.internalServerError()
                 .body(ApiResponse.error(500, "INTERNAL_SERVER_ERROR", "서버 오류가 발생했습니다"));
     }

@@ -1,13 +1,14 @@
-package bigbang.butilkka_be.user.dto;
+package bigbang.butilkka_be.store.dto;
 
 import java.time.LocalDate;
 
-public record StoreUpdateRequest(
+public record UpdateStoreRequest(
         String regionCode,
         String categoryCode,
         Double lat,
         Double lng,
         String storeName,
         String storeAddress,
-        LocalDate storeOpenDate
+        LocalDate storeOpenDate,
+        Boolean isPrimary
 ) {}
