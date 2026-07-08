@@ -15,7 +15,9 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -23,6 +25,22 @@ import java.util.List;
 public class DataLoadService {
 
     private final CommercialStatsRepository statsRepository;
+
+    // ──────────────────────────────────────────
+    // 중간 데이터 record
+    // ──────────────────────────────────────────
+    private record SalesData(String regionCode, Integer quarter, Integer year,
+                             Long salesAmount, BigDecimal salesDelta, Long salesGap) {}
+
+    private record FlpopData(Integer footTraffic, BigDecimal footTrafficDelta, Long footTrafficGap,
+                             String topAgeGroup, String topGender) {}
+
+    private record StoreData(Integer storeCount, BigDecimal storeCountDelta, Long storeCountGap,
+                             BigDecimal closureRate, BigDecimal closureRateDelta, Long closureRateGap) {}
+
+    private record RentData(Long rentAmount, BigDecimal rentDelta, Long rentGap) {}
+
+    private record VacancyData(BigDecimal vacancyRate, BigDecimal vacancyRateDelta, Long vacancyRateGap) {}
 
     /**
      * 전체 CSV 적재
@@ -42,55 +60,48 @@ public class DataLoadService {
     }
 
     private List<CommercialStats> buildStats() {
-        // 각 CSV를 regionCode+quarter 기준으로 Map으로 읽어서 merge
-        var salesMap    = readSales();
-        var flpopMap    = readFlpop();
-        var storeMap    = readStore();
-        var rentMap     = readRent();
-        var vacancyMap  = readVacancy();
+        var salesMap = readSales();
+        var flpopMap = readFlpop();
+        var storeMap = readStore();
+        var rentMap = readRent();
+        var vacancyMap = readVacancy();
 
         List<CommercialStats> result = new ArrayList<>();
 
         for (var entry : salesMap.entrySet()) {
-            String key = entry.getKey(); // "regionCode|quarter"
-            CommercialStats stats = entry.getValue();
+            String key = entry.getKey();
+            SalesData sales = entry.getValue();
 
-            // flpop 병합
-            CommercialStats flpop = flpopMap.get(key);
-            if (flpop != null) {
-                stats.setFootTraffic(flpop.getFootTraffic());
-                stats.setFootTrafficDelta(flpop.getFootTrafficDelta());
-                stats.setFootTrafficGap(flpop.getFootTrafficGap());
-                stats.setTopAgeGroup(flpop.getTopAgeGroup());
-                stats.setTopGender(flpop.getTopGender());
-            }
+            FlpopData flpop = flpopMap.get(key);
+            StoreData store = storeMap.get(key);
+            RentData rent = rentMap.get(key);
+            VacancyData vacancy = vacancyMap.get(key);
 
-            // store 병합
-            CommercialStats store = storeMap.get(key);
-            if (store != null) {
-                stats.setStoreCount(store.getStoreCount());
-                stats.setStoreCountDelta(store.getStoreCountDelta());
-                stats.setStoreCountGap(store.getStoreCountGap());
-                stats.setClosureRate(store.getClosureRate());
-                stats.setClosureRateDelta(store.getClosureRateDelta());
-                stats.setClosureRateGap(store.getClosureRateGap());
-            }
-
-            // rent 병합
-            CommercialStats rent = rentMap.get(key);
-            if (rent != null) {
-                stats.setRentAmount(rent.getRentAmount());
-                stats.setRentDelta(rent.getRentDelta());
-                stats.setRentGap(rent.getRentGap());
-            }
-
-            // vacancy 병합
-            CommercialStats vacancy = vacancyMap.get(key);
-            if (vacancy != null) {
-                stats.setVacancyRate(vacancy.getVacancyRate());
-                stats.setVacancyRateDelta(vacancy.getVacancyRateDelta());
-                stats.setVacancyRateGap(vacancy.getVacancyRateGap());
-            }
+            CommercialStats stats = CommercialStats.builder()
+                    .regionCode(sales.regionCode())
+                    .quarter(sales.quarter())
+                    .year(sales.year())
+                    .salesAmount(sales.salesAmount())
+                    .salesDelta(sales.salesDelta())
+                    .salesGap(sales.salesGap())
+                    .footTraffic(flpop != null ? flpop.footTraffic() : null)
+                    .footTrafficDelta(flpop != null ? flpop.footTrafficDelta() : null)
+                    .footTrafficGap(flpop != null ? flpop.footTrafficGap() : null)
+                    .topAgeGroup(flpop != null ? flpop.topAgeGroup() : null)
+                    .topGender(flpop != null ? flpop.topGender() : null)
+                    .storeCount(store != null ? store.storeCount() : null)
+                    .storeCountDelta(store != null ? store.storeCountDelta() : null)
+                    .storeCountGap(store != null ? store.storeCountGap() : null)
+                    .closureRate(store != null ? store.closureRate() : null)
+                    .closureRateDelta(store != null ? store.closureRateDelta() : null)
+                    .closureRateGap(store != null ? store.closureRateGap() : null)
+                    .rentAmount(rent != null ? rent.rentAmount() : null)
+                    .rentDelta(rent != null ? rent.rentDelta() : null)
+                    .rentGap(rent != null ? rent.rentGap() : null)
+                    .vacancyRate(vacancy != null ? vacancy.vacancyRate() : null)
+                    .vacancyRateDelta(vacancy != null ? vacancy.vacancyRateDelta() : null)
+                    .vacancyRateGap(vacancy != null ? vacancy.vacancyRateGap() : null)
+                    .build();
 
             result.add(stats);
         }
@@ -102,20 +113,19 @@ public class DataLoadService {
     // CSV 파서 (resources/data/ 아래 파일)
     // ──────────────────────────────────────────
 
-    /** BOM 제거 Reader 생성 */
     private Reader createBomFreeReader(String path) throws Exception {
         var is = new ClassPathResource(path).getInputStream();
         var reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
         reader.mark(1);
         int firstChar = reader.read();
-        if (firstChar != '\uFEFF') { // BOM이 아니면 되돌림
+        if (firstChar != '\uFEFF') {
             reader.reset();
         }
         return reader;
     }
 
-    private java.util.Map<String, CommercialStats> readSales() {
-        var map = new java.util.HashMap<String, CommercialStats>();
+    private Map<String, SalesData> readSales() {
+        var map = new HashMap<String, SalesData>();
         try (Reader reader = createBomFreeReader("data/sales_by_dong.csv");
              CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
 
@@ -123,19 +133,18 @@ public class DataLoadService {
                 String category = r.get("카테고리");
                 if (!"전체".equals(category)) continue;
 
-                String regionCode = r.get("행정동코드") + "00"; // 8자리 → 10자리
-                String quarter    = r.get("분기코드");          // 2023Q1
-                String key        = regionCode + "|" + quarter;
+                String regionCode = r.get("행정동코드") + "00";
+                String quarter = r.get("분기코드");
+                String key = regionCode + "|" + quarter;
 
-                CommercialStats stats = new CommercialStats();
-                stats.setRegionCode(regionCode);
-                stats.setQuarter(parseQuarter(quarter));
-                stats.setYear(parseYear(quarter));
-                stats.setSalesAmount(parseLong(r.get("매출금액")));
-                stats.setSalesDelta(parseDecimal(r.get("매출_QoQ")));
-                stats.setSalesGap(parseLong(r.get("매출_gap")));
-
-                map.put(key, stats);
+                map.put(key, new SalesData(
+                        regionCode,
+                        parseQuarter(quarter),
+                        parseYear(quarter),
+                        parseLong(r.get("매출금액")),
+                        parseDecimal(r.get("매출_QoQ")),
+                        parseLong(r.get("매출_gap"))
+                ));
             }
         } catch (Exception e) {
             log.error("sales CSV 읽기 실패", e);
@@ -143,24 +152,23 @@ public class DataLoadService {
         return map;
     }
 
-    private java.util.Map<String, CommercialStats> readFlpop() {
-        var map = new java.util.HashMap<String, CommercialStats>();
+    private Map<String, FlpopData> readFlpop() {
+        var map = new HashMap<String, FlpopData>();
         try (Reader reader = createBomFreeReader("data/flpop_by_dong.csv");
              CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
 
             for (CSVRecord r : parser) {
                 String regionCode = r.get("행정동코드") + "00";
-                String quarter    = r.get("분기코드");
-                String key        = regionCode + "|" + quarter;
+                String quarter = r.get("분기코드");
+                String key = regionCode + "|" + quarter;
 
-                CommercialStats stats = new CommercialStats();
-                stats.setFootTraffic(parseInt(r.get("총유동인구")));
-                stats.setFootTrafficDelta(parseDecimal(r.get("유동인구_delta")));
-                stats.setFootTrafficGap(parseLong(r.get("유동인구_gap")));
-                stats.setTopAgeGroup(r.get("최다연령대"));
-                stats.setTopGender(r.get("최다성별"));
-
-                map.put(key, stats);
+                map.put(key, new FlpopData(
+                        parseInt(r.get("총유동인구")),
+                        parseDecimal(r.get("유동인구_delta")),
+                        parseLong(r.get("유동인구_gap")),
+                        r.get("최다연령대"),
+                        r.get("최다성별")
+                ));
             }
         } catch (Exception e) {
             log.error("flpop CSV 읽기 실패", e);
@@ -168,8 +176,8 @@ public class DataLoadService {
         return map;
     }
 
-    private java.util.Map<String, CommercialStats> readStore() {
-        var map = new java.util.HashMap<String, CommercialStats>();
+    private Map<String, StoreData> readStore() {
+        var map = new HashMap<String, StoreData>();
         try (Reader reader = createBomFreeReader("data/store_by_dong.csv");
              CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
 
@@ -178,18 +186,17 @@ public class DataLoadService {
                 if (!"전체".equals(category)) continue;
 
                 String regionCode = r.get("행정동코드") + "00";
-                String quarter    = r.get("분기코드");
-                String key        = regionCode + "|" + quarter;
+                String quarter = r.get("분기코드");
+                String key = regionCode + "|" + quarter;
 
-                CommercialStats stats = new CommercialStats();
-                stats.setStoreCount(parseInt(r.get("점포수")));
-                stats.setStoreCountDelta(parseDecimal(r.get("점포수_증감률")));
-                stats.setStoreCountGap(parseLong(r.get("점포수_gap")));
-                stats.setClosureRate(parseDecimal(r.get("폐업률")));
-                stats.setClosureRateDelta(parseDecimal(r.get("폐업률_delta")));
-                stats.setClosureRateGap(parseLong(r.get("폐업률_gap")));
-
-                map.put(key, stats);
+                map.put(key, new StoreData(
+                        parseInt(r.get("점포수")),
+                        parseDecimal(r.get("점포수_증감률")),
+                        parseLong(r.get("점포수_gap")),
+                        parseDecimal(r.get("폐업률")),
+                        parseDecimal(r.get("폐업률_delta")),
+                        parseLong(r.get("폐업률_gap"))
+                ));
             }
         } catch (Exception e) {
             log.error("store CSV 읽기 실패", e);
@@ -197,22 +204,21 @@ public class DataLoadService {
         return map;
     }
 
-    private java.util.Map<String, CommercialStats> readRent() {
-        var map = new java.util.HashMap<String, CommercialStats>();
+    private Map<String, RentData> readRent() {
+        var map = new HashMap<String, RentData>();
         try (Reader reader = createBomFreeReader("data/rent_by_dong_full.csv");
              CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
 
             for (CSVRecord r : parser) {
                 String regionCode = r.get("행정동코드") + "00";
-                String quarter    = r.get("분기코드");
-                String key        = regionCode + "|" + quarter;
+                String quarter = r.get("분기코드");
+                String key = regionCode + "|" + quarter;
 
-                CommercialStats stats = new CommercialStats();
-                stats.setRentAmount(parseLong(r.get("임대료")));
-                stats.setRentDelta(parseDecimal(r.get("임대료_delta")));
-                stats.setRentGap(parseLong(r.get("임대료_gap")));
-
-                map.put(key, stats);
+                map.put(key, new RentData(
+                        parseLong(r.get("임대료")),
+                        parseDecimal(r.get("임대료_delta")),
+                        parseLong(r.get("임대료_gap"))
+                ));
             }
         } catch (Exception e) {
             log.error("rent CSV 읽기 실패", e);
@@ -220,22 +226,21 @@ public class DataLoadService {
         return map;
     }
 
-    private java.util.Map<String, CommercialStats> readVacancy() {
-        var map = new java.util.HashMap<String, CommercialStats>();
+    private Map<String, VacancyData> readVacancy() {
+        var map = new HashMap<String, VacancyData>();
         try (Reader reader = createBomFreeReader("data/vacancy_by_dong_full.csv");
              CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
 
             for (CSVRecord r : parser) {
                 String regionCode = r.get("행정동코드") + "00";
-                String quarter    = r.get("분기코드");
-                String key        = regionCode + "|" + quarter;
+                String quarter = r.get("분기코드");
+                String key = regionCode + "|" + quarter;
 
-                CommercialStats stats = new CommercialStats();
-                stats.setVacancyRate(parseDecimal(r.get("공실률")));
-                stats.setVacancyRateDelta(parseDecimal(r.get("공실률_delta")));
-                stats.setVacancyRateGap(parseLong(r.get("공실률_gap")));
-
-                map.put(key, stats);
+                map.put(key, new VacancyData(
+                        parseDecimal(r.get("공실률")),
+                        parseDecimal(r.get("공실률_delta")),
+                        parseLong(r.get("공실률_gap"))
+                ));
             }
         } catch (Exception e) {
             log.error("vacancy CSV 읽기 실패", e);
@@ -248,12 +253,10 @@ public class DataLoadService {
     // ──────────────────────────────────────────
 
     private int parseQuarter(String q) {
-        // "2023Q1" → 1
         return Integer.parseInt(q.substring(5));
     }
 
     private int parseYear(String q) {
-        // "2023Q1" → 2023
         return Integer.parseInt(q.substring(0, 4));
     }
 

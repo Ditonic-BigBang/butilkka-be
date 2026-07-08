@@ -2,16 +2,15 @@ package bigbang.butilkka_be.stats;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "commercial_stats")
 @Getter
-@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CommercialStats {
 
@@ -100,4 +99,44 @@ public class CommercialStats {
 
     @Column(length = 255)
     private String briefing;
+
+    @Builder
+    public CommercialStats(
+            String regionCode, String categoryCode, Integer quarter, Integer year,
+            Integer footTraffic, BigDecimal footTrafficDelta, Long footTrafficGap,
+            String topAgeGroup, String topGender,
+            Integer storeCount, BigDecimal storeCountDelta, Long storeCountGap,
+            Long salesAmount, BigDecimal salesDelta, Long salesGap,
+            Long rentAmount, BigDecimal rentDelta, Long rentGap,
+            BigDecimal closureRate, BigDecimal closureRateDelta, Long closureRateGap,
+            BigDecimal vacancyRate, BigDecimal vacancyRateDelta, Long vacancyRateGap,
+            BigDecimal avgBusinessPeriod, String declineGrade, String briefing) {
+        this.regionCode = regionCode;
+        this.categoryCode = categoryCode;
+        this.quarter = quarter;
+        this.year = year;
+        this.footTraffic = footTraffic;
+        this.footTrafficDelta = footTrafficDelta;
+        this.footTrafficGap = footTrafficGap;
+        this.topAgeGroup = topAgeGroup;
+        this.topGender = topGender;
+        this.storeCount = storeCount;
+        this.storeCountDelta = storeCountDelta;
+        this.storeCountGap = storeCountGap;
+        this.salesAmount = salesAmount;
+        this.salesDelta = salesDelta;
+        this.salesGap = salesGap;
+        this.rentAmount = rentAmount;
+        this.rentDelta = rentDelta;
+        this.rentGap = rentGap;
+        this.closureRate = closureRate;
+        this.closureRateDelta = closureRateDelta;
+        this.closureRateGap = closureRateGap;
+        this.vacancyRate = vacancyRate;
+        this.vacancyRateDelta = vacancyRateDelta;
+        this.vacancyRateGap = vacancyRateGap;
+        this.avgBusinessPeriod = avgBusinessPeriod;
+        this.declineGrade = declineGrade;
+        this.briefing = briefing;
+    }
 }
