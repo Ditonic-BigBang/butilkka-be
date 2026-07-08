@@ -12,7 +12,7 @@ class UserTest {
     void updateStore_setsFieldsAndMarksOnboarded() {
         User user = User.create(123L, "테스트");
 
-        user.updateStore("1168064000", "CS100001", 37.5, 127.0, "테스트가게", LocalDate.of(2020, 1, 1));
+        user.updateStore("1168064000", "CS100001", 37.5, 127.0, "테스트가게", "서울시 강남구 역삼동", LocalDate.of(2020, 1, 1));
 
         assertThat(user.isOnboarded()).isTrue();
         assertThat(user.getStoreRegion()).isEqualTo("1168064000");

@@ -63,7 +63,7 @@ class UserControllerTest {
     void getMe_withStore_returnsStoreInfo() throws Exception {
         when(userService.getMe(eq(1L)))
                 .thenReturn(new UserResponse(1L, "김민수", true,
-                        new UserResponse.StoreInfo("1168064000", "역삼1동", "CS100001", "한식음식점", 37.5, 127.03)));
+                        new UserResponse.StoreInfo("1168064000", "역삼1동", "CS100001", "한식음식점", 37.5, 127.03, "민수네 한식당", "서울시 강남구 역삼동", LocalDate.of(2022, 3, 15))));
 
         mockMvc.perform(get("/api/v1/users/me")
                         .with(authentication(authAs("1")))

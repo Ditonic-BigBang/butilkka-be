@@ -5,6 +5,7 @@ import bigbang.butilkka_be.category.CategoryRepository;
 import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.region.Region;
 import bigbang.butilkka_be.region.RegionRepository;
+import bigbang.butilkka_be.store.StoreRepository;
 import bigbang.butilkka_be.user.dto.NotificationSettingsResponse;
 import bigbang.butilkka_be.user.dto.NotificationSettingsUpdateRequest;
 import bigbang.butilkka_be.user.dto.StoreResponse;
@@ -22,6 +23,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -34,6 +37,8 @@ class UserServiceTest {
     private RegionRepository regionRepository;
     @Mock
     private CategoryRepository categoryRepository;
+    @Mock
+    private StoreRepository storeRepository;
 
     @InjectMocks
     private UserService userService;
@@ -41,8 +46,9 @@ class UserServiceTest {
     @Test
     void getMe_withStoreRegistered_includesStoreInfo() {
         User user = User.create(1L, "김민수");
-        user.updateStore("1168064000", "CS100001", 37.5, 127.03, "민수네 한식당", LocalDate.of(2022, 3, 15));
+        user.updateStore("1168064000", "CS100001", 37.5, 127.03, "민수네 한식당", "서울시 강남구 역삼동", LocalDate.of(2022, 3, 15));
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(storeRepository.findByUserIdAndIsPrimaryTrue(any())).thenReturn(Optional.empty());
         Region region = mock(Region.class);
         when(region.getRegionName()).thenReturn("역삼1동");
         Category category = mock(Category.class);
@@ -61,6 +67,7 @@ class UserServiceTest {
     @Test
     void getMe_withoutStore_returnsNullStore() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(User.create(1L, "김민수")));
+        when(storeRepository.findByUserIdAndIsPrimaryTrue(any())).thenReturn(Optional.empty());
 
         UserResponse response = userService.getMe(1L);
 
@@ -78,9 +85,10 @@ class UserServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(regionRepository.findById("1168064000")).thenReturn(Optional.of(region));
         when(categoryRepository.findById("CS100001")).thenReturn(Optional.of(category));
+        when(storeRepository.countByUserId(any())).thenReturn(0L);
 
         StoreUpdateRequest request = new StoreUpdateRequest(
-                "1168064000", "CS100001", 37.5, 127.03, "민수네 한식당", LocalDate.of(2022, 3, 15));
+                "1168064000", "CS100001", 37.5, 127.03, "민수네 한식당", "서울시 강남구 역삼동", LocalDate.of(2022, 3, 15));
 
         StoreResponse response = userService.updateStore(1L, request);
 
@@ -95,7 +103,7 @@ class UserServiceTest {
         when(regionRepository.findById("UNKNOWN")).thenReturn(Optional.empty());
 
         StoreUpdateRequest request = new StoreUpdateRequest(
-                "UNKNOWN", "CS100001", 37.5, 127.03, "가게", LocalDate.of(2022, 3, 15));
+                "UNKNOWN", "CS100001", 37.5, 127.03, "가게", "서울시 강남구", LocalDate.of(2022, 3, 15));
 
         assertThatThrownBy(() -> userService.updateStore(1L, request))
                 .isInstanceOf(AppException.class)
@@ -110,7 +118,7 @@ class UserServiceTest {
         when(categoryRepository.findById("UNKNOWN")).thenReturn(Optional.empty());
 
         StoreUpdateRequest request = new StoreUpdateRequest(
-                "1168064000", "UNKNOWN", 37.5, 127.03, "가게", LocalDate.of(2022, 3, 15));
+                "1168064000", "UNKNOWN", 37.5, 127.03, "가게", "서울시 강남구", LocalDate.of(2022, 3, 15));
 
         assertThatThrownBy(() -> userService.updateStore(1L, request))
                 .isInstanceOf(AppException.class)
@@ -121,8 +129,9 @@ class UserServiceTest {
     @Test
     void updateProfile_withNameOnly_updatesNameKeepsStore() {
         User user = User.create(1L, "김민수");
-        user.updateStore("1168064000", "CS100001", 37.5, 127.03, "민수네 한식당", LocalDate.of(2022, 3, 15));
+        user.updateStore("1168064000", "CS100001", 37.5, 127.03, "민수네 한식당", "서울시 강남구 역삼동", LocalDate.of(2022, 3, 15));
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(storeRepository.findByUserIdAndIsPrimaryTrue(any())).thenReturn(Optional.empty());
         Region region = mock(Region.class);
         when(region.getRegionName()).thenReturn("역삼1동");
         Category category = mock(Category.class);
@@ -141,6 +150,7 @@ class UserServiceTest {
     void updateProfile_withStoreOnly_updatesStoreKeepsNameAndOnboardedFlag() {
         User user = User.create(1L, "김민수");
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(storeRepository.findByUserIdAndIsPrimaryTrue(any())).thenReturn(Optional.empty());
         Region region = mock(Region.class);
         when(region.getRegionName()).thenReturn("역삼1동");
         Category category = mock(Category.class);
@@ -162,6 +172,7 @@ class UserServiceTest {
     void updateProfile_withNoFields_returnsUnchangedState() {
         User user = User.create(1L, "김민수");
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(storeRepository.findByUserIdAndIsPrimaryTrue(any())).thenReturn(Optional.empty());
 
         UserResponse response = userService.updateProfile(1L, new UserUpdateRequest(null, null));
 
