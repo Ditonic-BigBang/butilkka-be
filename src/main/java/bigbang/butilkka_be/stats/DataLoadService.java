@@ -1,5 +1,6 @@
 package bigbang.butilkka_be.stats;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -42,6 +43,13 @@ public class DataLoadService {
 
     private record VacancyData(BigDecimal vacancyRate, BigDecimal vacancyRateDelta, Long vacancyRateGap) {}
 
+    private record GradeData(String declineGrade) {}
+
+    @PostConstruct
+    public void init() {
+        loadAll();
+    }
+
     /**
      * 전체 CSV 적재
      * 이미 데이터가 있으면 skip
@@ -65,6 +73,7 @@ public class DataLoadService {
         var storeMap = readStore();
         var rentMap = readRent();
         var vacancyMap = readVacancy();
+        var gradeMap = readGrade();
 
         List<CommercialStats> result = new ArrayList<>();
 
@@ -76,6 +85,7 @@ public class DataLoadService {
             StoreData store = storeMap.get(key);
             RentData rent = rentMap.get(key);
             VacancyData vacancy = vacancyMap.get(key);
+            GradeData grade = gradeMap.get(sales.regionCode());
 
             CommercialStats stats = CommercialStats.builder()
                     .regionCode(sales.regionCode())
@@ -101,6 +111,7 @@ public class DataLoadService {
                     .vacancyRate(vacancy != null ? vacancy.vacancyRate() : null)
                     .vacancyRateDelta(vacancy != null ? vacancy.vacancyRateDelta() : null)
                     .vacancyRateGap(vacancy != null ? vacancy.vacancyRateGap() : null)
+                    .declineGrade(grade != null ? grade.declineGrade() : null)
                     .build();
 
             result.add(stats);
@@ -244,6 +255,23 @@ public class DataLoadService {
             }
         } catch (Exception e) {
             log.error("vacancy CSV 읽기 실패", e);
+        }
+        return map;
+    }
+
+    private Map<String, GradeData> readGrade() {
+        var map = new HashMap<String, GradeData>();
+        try (Reader reader = createBomFreeReader("data/final_grades.csv");
+             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
+
+            for (CSVRecord r : parser) {
+                String regionCode = r.get("행정동코드") + "00";
+                String grade = r.get("등급");
+
+                map.put(regionCode, new GradeData(grade));
+            }
+        } catch (Exception e) {
+            log.error("grade CSV 읽기 실패", e);
         }
         return map;
     }
