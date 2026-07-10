@@ -57,6 +57,9 @@ public class User {
     @Column(name = "urgent_alert", nullable = false)
     private boolean urgentAlert = false;
 
+    @Column(name = "is_report_pro", nullable = false)
+    private boolean isReportPro = false;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -113,5 +116,9 @@ public class User {
 
     public void completeOnboarding() {
         this.isOnboarded = true;
+    }
+
+    public void activateReportPro() {
+        this.isReportPro = true;
     }
 }

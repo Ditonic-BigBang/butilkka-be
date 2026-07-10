@@ -5,6 +5,8 @@ import bigbang.butilkka_be.user.dto.NotificationSettingsResponse;
 import bigbang.butilkka_be.user.dto.NotificationSettingsUpdateRequest;
 import bigbang.butilkka_be.user.dto.StoreResponse;
 import bigbang.butilkka_be.user.dto.StoreUpdateRequest;
+import bigbang.butilkka_be.user.dto.SubscriptionRequest;
+import bigbang.butilkka_be.user.dto.SubscriptionResponse;
 import bigbang.butilkka_be.user.dto.UserResponse;
 import bigbang.butilkka_be.user.dto.UserUpdateRequest;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -60,5 +63,13 @@ public class UserController {
             @RequestBody NotificationSettingsUpdateRequest request) {
         NotificationSettingsResponse response = userService.updateNotificationSettings(Long.parseLong(userId), request);
         return ResponseEntity.ok(ApiResponse.ok("알림 설정 변경 성공", response));
+    }
+
+    @PostMapping("/me/subscription")
+    public ResponseEntity<ApiResponse<SubscriptionResponse>> subscribe(
+            @AuthenticationPrincipal String userId,
+            @RequestBody SubscriptionRequest request) {
+        SubscriptionResponse response = userService.subscribe(Long.parseLong(userId), request.plan());
+        return ResponseEntity.ok(ApiResponse.ok("구독 성공", response));
     }
 }

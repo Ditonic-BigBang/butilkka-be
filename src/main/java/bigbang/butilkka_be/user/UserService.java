@@ -11,6 +11,7 @@ import bigbang.butilkka_be.user.dto.NotificationSettingsResponse;
 import bigbang.butilkka_be.user.dto.NotificationSettingsUpdateRequest;
 import bigbang.butilkka_be.user.dto.StoreResponse;
 import bigbang.butilkka_be.user.dto.StoreUpdateRequest;
+import bigbang.butilkka_be.user.dto.SubscriptionResponse;
 import bigbang.butilkka_be.user.dto.UserResponse;
 import bigbang.butilkka_be.user.dto.UserUpdateRequest;
 import lombok.RequiredArgsConstructor;
@@ -113,6 +114,14 @@ public class UserService {
                 .orElseThrow(() -> AppException.notFound("사용자를 찾을 수 없습니다"));
         user.updateNotificationSettings(request.smsAlert(), request.autoReport(), request.urgentAlert());
         return NotificationSettingsResponse.from(user);
+    }
+
+    @Transactional
+    public SubscriptionResponse subscribe(Long userId, String plan) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> AppException.notFound("사용자를 찾을 수 없습니다"));
+        user.activateReportPro();
+        return new SubscriptionResponse(true, plan);
     }
 
     private UserResponse.StoreInfo buildStoreInfo(User user) {

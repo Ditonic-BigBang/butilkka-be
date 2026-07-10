@@ -8,6 +8,7 @@ public record UserResponse(
         Long id,
         String name,
         boolean isOnboarded,
+        boolean isReportPro,
         StoreInfo store
 ) {
     public record StoreInfo(
@@ -23,6 +24,6 @@ public record UserResponse(
     ) {}
 
     public static UserResponse of(User user, StoreInfo store) {
-        return new UserResponse(user.getId(), user.getName(), user.isOnboarded(), store);
+        return new UserResponse(user.getId(), user.getName(), user.isOnboarded(), user.isReportPro(), store);
     }
 }
