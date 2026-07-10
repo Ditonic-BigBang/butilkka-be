@@ -51,7 +51,7 @@ public class RegionDetailService {
                 buildGradeSummary(history, latest, previous),
                 buildMetricSummary(history, CommercialStats::getRentAmount, CommercialStats::getRentDelta),
                 buildMetricSummary(history, s -> s.getFootTraffic(), CommercialStats::getFootTrafficDelta),
-                buildMetricSummary(history, CommercialStats::getVacancyRate, CommercialStats::getVacancyRateDelta),
+                buildRateMetricSummary(history, CommercialStats::getVacancyRate, CommercialStats::getVacancyRateDelta),
                 buildClosureRateSummary(history, latest),
                 buildStoreCountSummary(history, latest)
         );
@@ -75,16 +75,29 @@ public class RegionDetailService {
                 .map(s -> new MetricTrendPoint(label(s), valueFn.apply(s)))
                 .toList();
         String direction = resolveDirection(deltaFn.apply(latest));
-        return new MetricSummary(valueFn.apply(latest), deltaFn.apply(latest), direction, trend);
+        Number deltaPercent = toPercent(deltaFn.apply(latest));
+        return new MetricSummary(valueFn.apply(latest), deltaPercent, direction, trend);
+    }
+
+    private MetricSummary buildRateMetricSummary(
+            List<CommercialStats> history,
+            Function<CommercialStats, Number> valueFn,
+            Function<CommercialStats, Number> deltaFn) {
+        CommercialStats latest = history.get(history.size() - 1);
+        List<MetricTrendPoint> trend = history.stream()
+                .map(s -> new MetricTrendPoint(label(s), toPercent(valueFn.apply(s))))
+                .toList();
+        String direction = resolveDirection(deltaFn.apply(latest));
+        return new MetricSummary(toPercent(valueFn.apply(latest)), toPercent(deltaFn.apply(latest)), direction, trend);
     }
 
     private ClosureRateSummary buildClosureRateSummary(List<CommercialStats> history, CommercialStats latest) {
         List<MetricTrendPoint> trend = history.stream()
-                .map(s -> new MetricTrendPoint(label(s), s.getClosureRate()))
+                .map(s -> new MetricTrendPoint(label(s), toPercent(s.getClosureRate())))
                 .toList();
         String direction = resolveDirection(latest.getClosureRateDelta());
         return new ClosureRateSummary(
-                latest.getClosureRate(), latest.getClosureRateDelta(), direction, trend,
+                toPercent(latest.getClosureRate()), toPercent(latest.getClosureRateDelta()), direction, trend,
                 latest.getAvgBusinessPeriod(), SEOUL_AVG_OPERATING_YEARS);
     }
 
@@ -97,7 +110,7 @@ public class RegionDetailService {
                 .orElseThrow(() -> AppException.notFound("존재하지 않는 업종코드입니다."));
         List<CategoryCount> categoryDistribution = List.of(
                 new CategoryCount(category.getCategoryName(), latest.getStoreCount()));
-        return new StoreCountSummary(latest.getStoreCount(), latest.getStoreCountDelta(), direction, trend, categoryDistribution);
+        return new StoreCountSummary(latest.getStoreCount(), toPercent(latest.getStoreCountDelta()), direction, trend, categoryDistribution);
     }
 
     private String resolveDirection(Number delta) {
@@ -116,5 +129,9 @@ public class RegionDetailService {
 
     private String label(CommercialStats stats) {
         return stats.getYear() + "Q" + stats.getQuarter();
+    }
+
+    private Double toPercent(Number value) {
+        return value == null ? null : value.doubleValue() * 100;
     }
 }

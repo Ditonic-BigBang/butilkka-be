@@ -54,7 +54,7 @@ public class DashboardService {
         DashboardResponse.Metrics metrics = new DashboardResponse.Metrics(
                 trendOf(history, latest.getFootTrafficDelta(), latest.getFootTrafficGap(), CommercialStats::getFootTraffic, "만명"),
                 trendOf(history, latest.getStoreCountDelta(), latest.getStoreCountGap(), CommercialStats::getStoreCount, "개"),
-                trendOf(history, latest.getClosureRateDelta(), latest.getClosureRateGap(), CommercialStats::getClosureRate, "%p"));
+                rateTrendOf(history, latest.getClosureRateDelta(), latest.getClosureRateGap(), CommercialStats::getClosureRate, "%p"));
 
         return new DashboardResponse(store, grade, latest.getBriefing(), metrics);
     }
@@ -88,7 +88,7 @@ public class DashboardService {
             List<CommercialStats> history, BigDecimal delta, Long gap,
             Function<CommercialStats, Number> valueExtractor, String unit) {
         String direction = (delta != null && delta.signum() < 0) ? "DOWN" : "UP";
-        Double deltaAbs = delta == null ? null : Math.abs(delta.doubleValue());
+        Double deltaAbs = delta == null ? null : Math.abs(delta.doubleValue() * 100);
         Long gapAbs = gap == null ? null : Math.abs(gap);
         String gapText = formatGapText(gapAbs, unit);
 
@@ -114,5 +114,26 @@ public class DashboardService {
 
     private Double toDouble(Number number) {
         return number == null ? null : number.doubleValue();
+    }
+
+    private DashboardResponse.MetricTrend rateTrendOf(
+            List<CommercialStats> history, BigDecimal delta, Long gap,
+            Function<CommercialStats, Number> valueExtractor, String unit) {
+        String direction = (delta != null && delta.signum() < 0) ? "DOWN" : "UP";
+        Double deltaAbs = delta == null ? null : Math.abs(delta.doubleValue() * 100);
+        Long gapAbs = gap == null ? null : Math.abs(gap);
+        String gapText = formatGapText(gapAbs, unit);
+
+        List<DashboardResponse.Point> points = history.stream()
+                .skip(Math.max(0, history.size() - 3))
+                .map(stats -> new DashboardResponse.Point(
+                        stats.getYear() + "Q" + stats.getQuarter(), toPercent(valueExtractor.apply(stats))))
+                .toList();
+
+        return new DashboardResponse.MetricTrend(direction, deltaAbs, gapAbs, gapText, points);
+    }
+
+    private Double toPercent(Number number) {
+        return number == null ? null : number.doubleValue() * 100;
     }
 }

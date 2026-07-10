@@ -106,13 +106,13 @@ class DashboardServiceTest {
         stubRegionDistrictCategory();
 
         CommercialStats q4_2025 = statsOf(2025, 4, "B", "이전 브리핑",
-                132423, "0.0", 0L, 412, "0.0", 0L, "3.1", "0.0", 0L);
+                132423, "0.0", 0L, 412, "0.0", 0L, "0.031", "0.0", 0L);
         CommercialStats q1_2026 = statsOf(2026, 1, "B", "이전 브리핑2",
-                128110, "1.0", 100L, 405, "0.5", 2L, "3.4", "0.1", 0L);
+                128110, "0.01", 100L, 405, "0.005", 2L, "0.034", "0.001", 0L);
         CommercialStats q2_2026 = statsOf(2026, 2, "B", "이전 브리핑3",
-                125000, "-1.5", -3110L, 401, "0.7", 3L, "3.7", "0.0", 0L);
+                125000, "-0.015", -3110L, 401, "0.007", 3L, "0.037", "0.0", 0L);
         CommercialStats q3_2026 = statsOf(2026, 3, "C", "유동인구 감소와 공실 증가가 겹치는 주의 구간입니다.",
-                121940, "-5.5", -6170L, 398, "0.7", 3L, "3.9", "0.0", 0L);
+                121940, "-0.055", -6170L, 398, "0.007", 3L, "0.039", "0.0", 0L);
         when(commercialStatsQueryService.historyForRegion("1168064000"))
                 .thenReturn(List.of(q4_2025, q1_2026, q2_2026, q3_2026));
 
@@ -130,7 +130,7 @@ class DashboardServiceTest {
         assertThat(response.briefing()).isEqualTo("유동인구 감소와 공실 증가가 겹치는 주의 구간입니다.");
 
         assertThat(response.metrics().footTraffic().direction()).isEqualTo("DOWN");
-        assertThat(response.metrics().footTraffic().delta()).isEqualTo(5.5);
+        assertThat(response.metrics().footTraffic().delta()).isCloseTo(5.5, org.assertj.core.data.Offset.offset(0.001));
         assertThat(response.metrics().footTraffic().gap()).isEqualTo(6170L);
         assertThat(response.metrics().footTraffic().gapText()).isEqualTo("0,6 만명");
         assertThat(response.metrics().footTraffic().points()).hasSize(3);
@@ -140,7 +140,7 @@ class DashboardServiceTest {
         assertThat(response.metrics().footTraffic().points().get(2).value()).isEqualTo(121940.0);
 
         assertThat(response.metrics().storeCount().direction()).isEqualTo("UP");
-        assertThat(response.metrics().storeCount().delta()).isEqualTo(0.7);
+        assertThat(response.metrics().storeCount().delta()).isCloseTo(0.7, org.assertj.core.data.Offset.offset(0.001));
         assertThat(response.metrics().storeCount().gap()).isEqualTo(3L);
         assertThat(response.metrics().storeCount().gapText()).isEqualTo("3 개");
 
@@ -148,7 +148,7 @@ class DashboardServiceTest {
         assertThat(response.metrics().closureRate().delta()).isEqualTo(0.0);
         assertThat(response.metrics().closureRate().gap()).isEqualTo(0L);
         assertThat(response.metrics().closureRate().gapText()).isEqualTo("0 %p");
-        assertThat(response.metrics().closureRate().points().get(2).value()).isEqualTo(3.9);
+        assertThat(response.metrics().closureRate().points().get(2).value()).isCloseTo(3.9, org.assertj.core.data.Offset.offset(0.001));
     }
 
     @Test
@@ -181,7 +181,7 @@ class DashboardServiceTest {
         stubRegionDistrictCategory();
 
         CommercialStats onlyQuarter = statsOf(2026, 1, "A", "첫 분기 브리핑",
-                50000, "0.0", 0L, 100, "0.0", 0L, "2.0", "0.0", 0L);
+                50000, "0.0", 0L, 100, "0.0", 0L, "0.02", "0.0", 0L);
         when(commercialStatsQueryService.historyForRegion("1168064000")).thenReturn(List.of(onlyQuarter));
 
         DashboardResponse response = service.getDashboard(1L);
@@ -200,7 +200,7 @@ class DashboardServiceTest {
         stubRegionDistrictCategory();
 
         CommercialStats statsWithNulls = statsOf(2026, 1, "B", "브리핑",
-                null, null, null, 100, "0.0", 0L, "2.0", "0.0", 0L);
+                null, null, null, 100, "0.0", 0L, "0.02", "0.0", 0L);
         when(commercialStatsQueryService.historyForRegion("1168064000")).thenReturn(List.of(statsWithNulls));
 
         DashboardResponse response = service.getDashboard(1L);

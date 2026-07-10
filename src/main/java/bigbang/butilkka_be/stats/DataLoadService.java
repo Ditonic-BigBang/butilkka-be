@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,9 @@ public class DataLoadService {
 
     private final CommercialStatsRepository statsRepository;
 
+    @Value("${app.data-load.enabled:true}")
+    private boolean dataLoadEnabled;
+
     // ──────────────────────────────────────────
     // 중간 데이터 record
     // ──────────────────────────────────────────
@@ -47,6 +51,10 @@ public class DataLoadService {
 
     @PostConstruct
     public void init() {
+        if (!dataLoadEnabled) {
+            log.info("CSV 데이터 적재 비활성화됨");
+            return;
+        }
         loadAll();
     }
 
