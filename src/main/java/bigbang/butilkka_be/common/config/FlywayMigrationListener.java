@@ -36,7 +36,17 @@ public class FlywayMigrationListener implements BeanFactoryPostProcessor {
     }
 
     JdbcConnection resolveConnection(ConfigurableListableBeanFactory beanFactory, ConfigurableEnvironment env) {
-        JdbcConnectionDetails connectionDetails = beanFactory.getBeanProvider(JdbcConnectionDetails.class).getIfAvailable();
+        JdbcConnectionDetails connectionDetails;
+        try {
+            connectionDetails = beanFactory.getBeanProvider(JdbcConnectionDetails.class).getIfAvailable();
+        } catch (BeansException ex) {
+            // This runs before @ConfigurationProperties binding has populated DataSourceProperties,
+            // so eagerly instantiating Spring Boot's own PropertiesJdbcConnectionDetails bean (the
+            // fallback when docker-compose hasn't registered a more specific one) fails with url
+            // resolving to null. Fall back to reading spring.datasource.* straight from the
+            // Environment, which is already fully populated at this point.
+            connectionDetails = null;
+        }
         if (connectionDetails != null) {
             return new JdbcConnection(
                     connectionDetails.getJdbcUrl(), connectionDetails.getUsername(), connectionDetails.getPassword());
