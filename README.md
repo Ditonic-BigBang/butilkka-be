@@ -136,16 +136,44 @@ fetch('http://localhost:8080/api/v1/users/me', {
 | `EC2_SSH_KEY` | EC2 SSH 프라이빗 키 (PEM 파일 내용 전체) |
 | `DOCKER_USERNAME` | Docker Hub 유저명 |
 | `DOCKER_PASSWORD` | Docker Hub 비밀번호 또는 Access Token |
-| `DB_URL` | 프로덕션 DB JDBC URL |
+| `DB_URL` | 프로덕션 DB JDBC URL (예: `jdbc:mysql://butilkka-mysql:3306/butilkka?serverTimezone=Asia/Seoul&characterEncoding=UTF-8`) |
 | `DB_USERNAME` | 프로덕션 DB 유저명 |
 | `DB_PASSWORD` | 프로덕션 DB 비밀번호 |
 | `JWT_SECRET` | JWT 서명 키 (32자 이상) |
 | `KAKAO_CLIENT_ID` | 카카오 REST API 키 |
 | `KAKAO_CLIENT_SECRET` | 카카오 클라이언트 시크릿 |
+| `KAKAO_REDIRECT_URI` | 프로덕션 카카오 콜백 URI (예: `https://api.butilkka.site/api/v1/auth/kakao/callback`) |
 | `FRONTEND_URL` | 프론트엔드 URL (예: `https://your-frontend.com`) |
 
 > EC2 인스턴스에 Docker가 설치되어 있어야 합니다.
 > `EC2_HOST` Secret이 없으면 배포 단계는 자동으로 스킵됩니다.
+
+### EC2 사전 준비 (최초 1회, 수동)
+
+CD 워크플로우는 앱 컨테이너만 재배포합니다. DB는 데이터 유실을 막기 위해 최초 1회 수동으로 띄워두고 계속 유지합니다.
+
+```bash
+# Docker 설치
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER && newgrp docker
+
+# 앱-DB 통신용 도커 네트워크
+docker network create butilkka-net
+
+# MySQL 컨테이너 (앱 컨테이너와 이름으로 통신, 포트는 외부에 노출하지 않음)
+docker run -d --name butilkka-mysql --network butilkka-net --restart unless-stopped \
+  -e MYSQL_ROOT_PASSWORD='<비밀번호>' \
+  -e MYSQL_DATABASE=butilkka \
+  -e MYSQL_USER=butilkka \
+  -e MYSQL_PASSWORD='<비밀번호>' \
+  -v butilkka-mysql-data:/var/lib/mysql \
+  mysql:8.0 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+```
+
+앱 컨테이너(`butilkka-be`)는 CD 워크플로우가 `--network butilkka-net`으로 붙여서 배포하므로 `butilkka-mysql`이라는 호스트명으로 DB에 접속합니다.
+
+HTTPS는 nginx(리버스 프록시) + Let's Encrypt(`certbot --nginx`)로 `api.butilkka.site` → `127.0.0.1:8080`을 프록시하도록 구성되어 있습니다.
 
 ---
 
