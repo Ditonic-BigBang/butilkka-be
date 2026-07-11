@@ -36,20 +36,20 @@ public class FlywayMigrationListener implements BeanFactoryPostProcessor {
     }
 
     JdbcConnection resolveConnection(ConfigurableListableBeanFactory beanFactory, ConfigurableEnvironment env) {
-        JdbcConnectionDetails connectionDetails;
         try {
-            connectionDetails = beanFactory.getBeanProvider(JdbcConnectionDetails.class).getIfAvailable();
-        } catch (BeansException ex) {
-            // This runs before @ConfigurationProperties binding has populated DataSourceProperties,
-            // so eagerly instantiating Spring Boot's own PropertiesJdbcConnectionDetails bean (the
-            // fallback when docker-compose hasn't registered a more specific one) fails with url
-            // resolving to null. Fall back to reading spring.datasource.* straight from the
-            // Environment, which is already fully populated at this point.
-            connectionDetails = null;
-        }
-        if (connectionDetails != null) {
-            return new JdbcConnection(
-                    connectionDetails.getJdbcUrl(), connectionDetails.getUsername(), connectionDetails.getPassword());
+            JdbcConnectionDetails connectionDetails =
+                    beanFactory.getBeanProvider(JdbcConnectionDetails.class).getIfAvailable();
+            if (connectionDetails != null) {
+                return new JdbcConnection(
+                        connectionDetails.getJdbcUrl(), connectionDetails.getUsername(), connectionDetails.getPassword());
+            }
+        } catch (BeansException | IllegalStateException ex) {
+            // This runs before @ConfigurationProperties binding has populated DataSourceProperties.
+            // When no docker-compose-provided JdbcConnectionDetails bean exists, the only candidate
+            // is Spring Boot's own PropertiesJdbcConnectionDetails, which just wraps DataSourceProperties -
+            // calling getJdbcUrl() on it triggers DataSourceProperties.determineUrl(), which fails
+            // here because the properties haven't been bound yet. Fall back to reading
+            // spring.datasource.* straight from the Environment, which is already fully populated.
         }
 
         String url = env.getRequiredProperty("spring.datasource.url");
