@@ -13,8 +13,8 @@ public record ReportGenerateResponse(
         List<Cause> causes,
         List<Signal> signals,
         @JsonProperty("decision_reasons") DecisionReasons decisionReasons,
-        @JsonProperty("similar_cases") List<SimilarCase> similarCases,
-        @JsonProperty("alternative_regions") List<AlternativeRegion> alternativeRegions
+        @JsonProperty("similar_cases") List<AiSimilarCase> similarCases,
+        @JsonProperty("alternative_regions") List<AiAlternativeRegion> alternativeRegions
 ) {
     public record Cause(
             String title,
@@ -33,7 +33,7 @@ public record ReportGenerateResponse(
             @JsonProperty("reason_3") String reason3
     ) {}
 
-    public record SimilarCase(
+    public record AiSimilarCase(
             @JsonProperty("region_code") String regionCode,
             String summary,
             String description,
@@ -45,7 +45,7 @@ public record ReportGenerateResponse(
             String tag4
     ) {}
 
-    public record AlternativeRegion(
+    public record AiAlternativeRegion(
             @JsonProperty("region_code") String regionCode,
             String reason,
             String stat
