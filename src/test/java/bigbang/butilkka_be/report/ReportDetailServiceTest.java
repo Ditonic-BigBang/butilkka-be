@@ -8,6 +8,8 @@ import bigbang.butilkka_be.region.DistrictRepository;
 import bigbang.butilkka_be.region.Region;
 import bigbang.butilkka_be.region.RegionRepository;
 import bigbang.butilkka_be.report.dto.ReportDetailResponse;
+import bigbang.butilkka_be.user.User;
+import bigbang.butilkka_be.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +44,8 @@ class ReportDetailServiceTest {
     private DistrictRepository districtRepository;
     @Mock
     private CategoryRepository categoryRepository;
+    @Mock
+    private UserRepository userRepository;
 
     private ReportDetailService service;
 
@@ -50,7 +54,19 @@ class ReportDetailServiceTest {
         service = new ReportDetailService(
                 reportRepository, reportCauseRepository, reportSignalRepository,
                 reportSimilarCaseRepository, reportAlternativeRegionRepository,
-                regionRepository, districtRepository, categoryRepository);
+                regionRepository, districtRepository, categoryRepository, userRepository);
+    }
+
+    private void stubProUser(Long userId) {
+        User user = mock(User.class);
+        lenient().when(user.isReportPro()).thenReturn(true);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+    }
+
+    private void stubFreeUser(Long userId) {
+        User user = mock(User.class);
+        lenient().when(user.isReportPro()).thenReturn(false);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
     }
 
     private static Report reportOf(Long reportId, Long userId, int year, int quarter, String grade, int score) {
@@ -91,6 +107,7 @@ class ReportDetailServiceTest {
 
     @Test
     void getLatest_picksHighestYearQuarter() {
+        stubProUser(1L);
         Report older = reportOf(5L, 1L, 2026, 1, "B", 70);
         Report newer = reportOf(1L, 1L, 2026, 4, "A", 90);
         when(reportRepository.findByUserId(1L)).thenReturn(List.of(older, newer));
@@ -113,6 +130,7 @@ class ReportDetailServiceTest {
 
     @Test
     void getLatest_withNoReports_throwsNotFound() {
+        stubProUser(1L);
         when(reportRepository.findByUserId(1L)).thenReturn(List.of());
 
         assertThatThrownBy(() -> service.getLatest(1L))
@@ -123,6 +141,7 @@ class ReportDetailServiceTest {
 
     @Test
     void getDetail_withOwnedReport_returnsDetail() {
+        stubProUser(1L);
         Report report = reportOf(1L, 1L, 2026, 4, "A", 90);
         when(reportRepository.findById(1L)).thenReturn(Optional.of(report));
         stubRegionAndCategory();
@@ -138,6 +157,7 @@ class ReportDetailServiceTest {
 
     @Test
     void getDetail_withOtherUsersReport_throwsNotFound() {
+        stubProUser(1L);
         Report report = reportOf(1L, 2L, 2026, 4, "A", 90);
         when(reportRepository.findById(1L)).thenReturn(Optional.of(report));
 
@@ -149,6 +169,7 @@ class ReportDetailServiceTest {
 
     @Test
     void getDetail_withUnknownReportId_throwsNotFound() {
+        stubProUser(1L);
         when(reportRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getDetail(1L, 99L))
@@ -159,6 +180,7 @@ class ReportDetailServiceTest {
 
     @Test
     void getDetail_buildsCausesSignalsAndAlternativeRegionsWithRank() {
+        stubProUser(1L);
         Report report = reportOf(3L, 1L, 2026, 4, "C", 50);
         when(reportRepository.findById(3L)).thenReturn(Optional.of(report));
         stubRegionAndCategory();
@@ -208,6 +230,7 @@ class ReportDetailServiceTest {
 
     @Test
     void getDetail_limitsSimilarCasesToThree() {
+        stubProUser(1L);
         Report report = reportOf(1L, 1L, 2026, 4, "A", 90);
         when(reportRepository.findById(1L)).thenReturn(Optional.of(report));
         stubRegionAndCategory();
@@ -243,6 +266,7 @@ class ReportDetailServiceTest {
 
     @Test
     void getDetail_withNullStartAndEndYear_returnsNullPeriodFields() {
+        stubProUser(1L);
         Report report = reportOf(1L, 1L, 2026, 4, "A", 90);
         when(reportRepository.findById(1L)).thenReturn(Optional.of(report));
         stubRegionAndCategory();
@@ -267,5 +291,25 @@ class ReportDetailServiceTest {
         assertThat(response.similarCases()).hasSize(1);
         assertThat(response.similarCases().get(0).period().startYear()).isNull();
         assertThat(response.similarCases().get(0).period().endYear()).isNull();
+    }
+
+    @Test
+    void getDetail_withFreeUser_returnsNullForProFields() {
+        stubFreeUser(1L);
+        Report report = reportOf(1L, 1L, 2026, 4, "A", 90);
+        when(reportRepository.findById(1L)).thenReturn(Optional.of(report));
+        stubRegionAndCategory();
+        when(reportCauseRepository.findByReportId(1L)).thenReturn(List.of());
+        when(reportSignalRepository.findByReportId(1L)).thenReturn(List.of());
+
+        ReportDetailResponse response = service.getDetail(1L, 1L);
+
+        assertThat(response.reportId()).isEqualTo(1L);
+        assertThat(response.causes()).isEmpty();
+        assertThat(response.leadingSignals()).isEmpty();
+        // Pro 전용 필드는 null
+        assertThat(response.similarCases()).isNull();
+        assertThat(response.decision()).isNull();
+        assertThat(response.alternativeRegions()).isNull();
     }
 }

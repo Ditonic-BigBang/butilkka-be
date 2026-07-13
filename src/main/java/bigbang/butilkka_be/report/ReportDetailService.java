@@ -8,6 +8,8 @@ import bigbang.butilkka_be.region.DistrictRepository;
 import bigbang.butilkka_be.region.Region;
 import bigbang.butilkka_be.region.RegionRepository;
 import bigbang.butilkka_be.report.dto.ReportDetailResponse;
+import bigbang.butilkka_be.user.User;
+import bigbang.butilkka_be.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -27,22 +29,27 @@ public class ReportDetailService {
     private final RegionRepository regionRepository;
     private final DistrictRepository districtRepository;
     private final CategoryRepository categoryRepository;
+    private final UserRepository userRepository;
 
     public ReportDetailResponse getLatest(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> AppException.notFound("사용자를 찾을 수 없습니다."));
         Report latest = reportRepository.findByUserId(userId).stream()
                 .max(Comparator.comparingInt(Report::getYear).thenComparingInt(Report::getQuarter))
                 .orElseThrow(() -> AppException.notFound("생성된 리포트가 없습니다."));
-        return buildDetail(latest);
+        return buildDetail(latest, user.isReportPro());
     }
 
     public ReportDetailResponse getDetail(Long userId, Long reportId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> AppException.notFound("사용자를 찾을 수 없습니다."));
         Report report = reportRepository.findById(reportId)
                 .filter(r -> r.getUserId().equals(userId))
                 .orElseThrow(() -> AppException.notFound("존재하지 않는 리포트입니다."));
-        return buildDetail(report);
+        return buildDetail(report, user.isReportPro());
     }
 
-    private ReportDetailResponse buildDetail(Report report) {
+    private ReportDetailResponse buildDetail(Report report, boolean isPro) {
         Region region = regionRepository.findById(report.getRegionCode())
                 .orElseThrow(() -> AppException.notFound("존재하지 않는 상권코드입니다."));
         District district = districtRepository.findById(region.getDistrictCode())
@@ -60,19 +67,26 @@ public class ReportDetailService {
                 .map(s -> new ReportDetailResponse.Signal(s.getTitle(), s.getDescription()))
                 .toList();
 
-        List<ReportDetailResponse.SimilarCasePreview> similarCases = reportSimilarCaseRepository.findByReportId(report.getReportId()).stream()
-                .limit(3)
-                .map(this::toSimilarCasePreview)
-                .toList();
+        // Pro 전용: 유사 사례, AI 추천, 대체 상권
+        List<ReportDetailResponse.SimilarCasePreview> similarCases = null;
+        ReportDetailResponse.Decision decision = null;
+        List<ReportDetailResponse.AlternativeRegion> alternativeRegions = null;
 
-        List<ReportAlternativeRegion> alternativeRegionEntities = reportAlternativeRegionRepository.findByReportId(report.getReportId());
-        List<ReportDetailResponse.AlternativeRegion> alternativeRegions = new ArrayList<>();
-        for (int i = 0; i < alternativeRegionEntities.size(); i++) {
-            alternativeRegions.add(toAlternativeRegion(alternativeRegionEntities.get(i), i + 1));
+        if (isPro) {
+            similarCases = reportSimilarCaseRepository.findByReportId(report.getReportId()).stream()
+                    .limit(3)
+                    .map(this::toSimilarCasePreview)
+                    .toList();
+
+            List<ReportAlternativeRegion> alternativeRegionEntities = reportAlternativeRegionRepository.findByReportId(report.getReportId());
+            alternativeRegions = new ArrayList<>();
+            for (int i = 0; i < alternativeRegionEntities.size(); i++) {
+                alternativeRegions.add(toAlternativeRegion(alternativeRegionEntities.get(i), i + 1));
+            }
+
+            decision = new ReportDetailResponse.Decision(
+                    report.getDecisionRecommendation(), report.getDecisionTitle(), report.getDecisionDescription());
         }
-
-        ReportDetailResponse.Decision decision = new ReportDetailResponse.Decision(
-                report.getDecisionRecommendation(), report.getDecisionTitle(), report.getDecisionDescription());
 
         return new ReportDetailResponse(
                 report.getReportId(),
