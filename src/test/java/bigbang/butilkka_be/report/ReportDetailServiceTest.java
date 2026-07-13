@@ -66,6 +66,8 @@ class ReportDetailServiceTest {
         lenient().when(report.getScore()).thenReturn(score);
         lenient().when(report.getSummary()).thenReturn("한 줄 브리핑");
         lenient().when(report.getAiOutlook()).thenReturn("AI 전망");
+        lenient().when(report.getPredictedTrend()).thenReturn(null);
+        lenient().when(report.getPredictedNextGrade()).thenReturn(null);
         lenient().when(report.getDecisionRecommendation()).thenReturn("버티기");
         lenient().when(report.getDecisionTitle()).thenReturn("현 위치 유지 권장");
         lenient().when(report.getDecisionDescription()).thenReturn("의사결정 설명");

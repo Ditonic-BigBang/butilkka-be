@@ -86,6 +86,8 @@ public class ReportDetailService {
                 report.getScore(),
                 report.getSummary(),
                 report.getAiOutlook(),
+                report.getPredictedTrend(),
+                report.getPredictedNextGrade(),
                 causes,
                 signals,
                 similarCases,

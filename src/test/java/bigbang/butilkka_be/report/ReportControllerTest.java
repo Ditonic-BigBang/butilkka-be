@@ -48,6 +48,7 @@ class ReportControllerTest {
         return new ReportDetailResponse(
                 1L, "1168064000", "강남구", "역삼1동", "한식음식점",
                 "2026Q4", "A", "성장형", 90, "한 줄 브리핑", "AI 전망",
+                null, null,
                 List.of(), List.of(), List.of(),
                 new ReportDetailResponse.Decision("버티기", "현 위치 유지 권장", "의사결정 설명"),
                 List.of());

@@ -48,6 +48,12 @@ public class Report {
     @Column(name = "ai_outlook", columnDefinition = "TEXT")
     private String aiOutlook;
 
+    @Column(name = "predicted_trend", length = 10)
+    private String predictedTrend;
+
+    @Column(name = "predicted_next_grade", length = 1)
+    private String predictedNextGrade;
+
     @Column(name = "decision_recommendation", length = 10)
     private String decisionRecommendation;
 

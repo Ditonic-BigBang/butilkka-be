@@ -14,6 +14,8 @@ public record ReportDetailResponse(
         Integer score,
         String briefing,
         String aiOutlook,
+        String predictedTrend,
+        String predictedNextGrade,
         List<Cause> causes,
         List<Signal> leadingSignals,
         List<SimilarCasePreview> similarCases,
