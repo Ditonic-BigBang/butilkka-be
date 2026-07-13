@@ -88,7 +88,7 @@ public class DashboardService {
             List<CommercialStats> history, BigDecimal delta, Long gap,
             Function<CommercialStats, Number> valueExtractor, String unit) {
         String direction = (delta != null && delta.signum() < 0) ? "DOWN" : "UP";
-        Double deltaAbs = delta == null ? null : Math.abs(delta.doubleValue() * 100);
+        Double deltaAbs = delta == null ? null : Math.round(Math.abs(delta.doubleValue() * 100) * 100) / 100.0;
         Long gapAbs = gap == null ? null : Math.abs(gap);
         String gapText = formatGapText(gapAbs, unit);
 
@@ -120,7 +120,7 @@ public class DashboardService {
             List<CommercialStats> history, BigDecimal delta, Long gap,
             Function<CommercialStats, Number> valueExtractor, String unit) {
         String direction = (delta != null && delta.signum() < 0) ? "DOWN" : "UP";
-        Double deltaAbs = delta == null ? null : Math.abs(delta.doubleValue() * 100);
+        Double deltaAbs = delta == null ? null : Math.round(Math.abs(delta.doubleValue() * 100) * 100) / 100.0;
         Long gapAbs = gap == null ? null : Math.abs(gap);
         String gapText = formatGapText(gapAbs, unit);
 
