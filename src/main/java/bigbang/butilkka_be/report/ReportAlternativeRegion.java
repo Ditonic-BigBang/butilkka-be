@@ -26,4 +26,13 @@ public class ReportAlternativeRegion {
 
     @Column(nullable = false, length = 50)
     private String stat;
+
+    public static ReportAlternativeRegion create(Long reportId, String regionCode, String reason, String stat) {
+        ReportAlternativeRegion r = new ReportAlternativeRegion();
+        r.reportId = reportId;
+        r.regionCode = regionCode;
+        r.reason = reason;
+        r.stat = stat;
+        return r;
+    }
 }

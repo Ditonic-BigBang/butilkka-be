@@ -66,14 +66,29 @@ public class Report {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    public static Report create(Long userId, String regionCode, String categoryCode, Integer quarter, String grade) {
+    public static Report create(Long userId, String regionCode, String categoryCode,
+                                 Integer year, Integer quarter, String grade, Integer score, String declineType) {
         Report report = new Report();
         report.userId = userId;
         report.regionCode = regionCode;
         report.categoryCode = categoryCode;
+        report.year = year;
         report.quarter = quarter;
         report.grade = grade;
+        report.score = score;
+        report.declineType = declineType;
         report.createdAt = LocalDateTime.now();
         return report;
+    }
+
+    public void applyAiResponse(String summary, String aiOutlook, String predictedTrend, String predictedNextGrade,
+                                 String decisionRecommendation, String decisionTitle, String decisionDescription) {
+        this.summary = summary;
+        this.aiOutlook = aiOutlook;
+        this.predictedTrend = predictedTrend;
+        this.predictedNextGrade = predictedNextGrade;
+        this.decisionRecommendation = decisionRecommendation;
+        this.decisionTitle = decisionTitle;
+        this.decisionDescription = decisionDescription;
     }
 }

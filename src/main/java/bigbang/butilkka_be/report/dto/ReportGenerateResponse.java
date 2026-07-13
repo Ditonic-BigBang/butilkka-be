@@ -14,7 +14,9 @@ public record ReportGenerateResponse(
         List<Signal> signals,
         @JsonProperty("decision_reasons") DecisionReasons decisionReasons,
         @JsonProperty("similar_cases") List<AiSimilarCase> similarCases,
-        @JsonProperty("alternative_regions") List<AiAlternativeRegion> alternativeRegions
+        @JsonProperty("alternative_regions") List<AiAlternativeRegion> alternativeRegions,
+        @JsonProperty("predicted_trend") String predictedTrend,
+        @JsonProperty("predicted_next_grade") String predictedNextGrade
 ) {
     public record Cause(
             String title,

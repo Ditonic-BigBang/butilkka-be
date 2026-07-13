@@ -42,6 +42,8 @@ class ReportDetailServiceTest {
     private DistrictRepository districtRepository;
     @Mock
     private CategoryRepository categoryRepository;
+    @Mock
+    private ReportGenerateService reportGenerateService;
 
     private ReportDetailService service;
 
@@ -50,7 +52,7 @@ class ReportDetailServiceTest {
         service = new ReportDetailService(
                 reportRepository, reportCauseRepository, reportSignalRepository,
                 reportSimilarCaseRepository, reportAlternativeRegionRepository,
-                regionRepository, districtRepository, categoryRepository);
+                regionRepository, districtRepository, categoryRepository, reportGenerateService);
     }
 
     private static Report reportOf(Long reportId, Long userId, int year, int quarter, String grade, int score) {
@@ -112,13 +114,20 @@ class ReportDetailServiceTest {
     }
 
     @Test
-    void getLatest_withNoReports_throwsNotFound() {
+    void getLatest_withNoReports_generatesNewReport() {
+        Report generated = reportOf(10L, 1L, 2026, 3, "B", 70);
         when(reportRepository.findByUserId(1L)).thenReturn(List.of());
+        when(reportGenerateService.generateAndSave(1L)).thenReturn(generated);
+        stubRegionAndCategory();
+        when(reportCauseRepository.findByReportId(10L)).thenReturn(List.of());
+        when(reportSignalRepository.findByReportId(10L)).thenReturn(List.of());
+        when(reportSimilarCaseRepository.findByReportId(10L)).thenReturn(List.of());
+        when(reportAlternativeRegionRepository.findByReportId(10L)).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.getLatest(1L))
-                .isInstanceOf(AppException.class)
-                .extracting(e -> ((AppException) e).getHttpStatus())
-                .isEqualTo(org.springframework.http.HttpStatus.NOT_FOUND);
+        ReportDetailResponse response = service.getLatest(1L);
+
+        assertThat(response.reportId()).isEqualTo(10L);
+        assertThat(response.quarter()).isEqualTo("2026Q3");
     }
 
     @Test

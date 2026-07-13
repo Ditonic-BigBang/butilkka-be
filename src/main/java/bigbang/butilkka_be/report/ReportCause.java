@@ -27,4 +27,13 @@ public class ReportCause {
 
     @Column(nullable = false, length = 255)
     private String description;
+
+    public static ReportCause create(Long reportId, String title, String level, String description) {
+        ReportCause cause = new ReportCause();
+        cause.reportId = reportId;
+        cause.title = title;
+        cause.level = level;
+        cause.description = description;
+        return cause;
+    }
 }

@@ -2,6 +2,8 @@ package bigbang.butilkka_be.report.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.List;
+
 public record ReportGenerateRequest(
         @JsonProperty("region_code") String regionCode,
         @JsonProperty("region_name") String regionName,
@@ -11,7 +13,8 @@ public record ReportGenerateRequest(
         String grade,
         Integer score,
         @JsonProperty("decline_type") String declineType,
-        ReportContext context
+        ReportContext context,
+        @JsonProperty("quarterly_history") QuarterlyHistory quarterlyHistory
 ) {
     public record ReportContext(
             @JsonProperty("sales_delta") Double salesDelta,
@@ -21,5 +24,12 @@ public record ReportGenerateRequest(
             @JsonProperty("vacancy_rate") Double vacancyRate,
             @JsonProperty("top_age_group") String topAgeGroup,
             @JsonProperty("top_gender") String topGender
+    ) {}
+
+    public record QuarterlyHistory(
+            @JsonProperty("sales_qoq") List<Double> salesQoq,
+            @JsonProperty("foot_traffic") List<Double> footTraffic,
+            @JsonProperty("store_count") List<Double> storeCount,
+            @JsonProperty("closure_rate") List<Double> closureRate
     ) {}
 }

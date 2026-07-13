@@ -5,6 +5,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "report_similar_cases")
 @Getter
@@ -44,4 +46,22 @@ public class ReportSimilarCase {
 
     @Column(length = 20)
     private String tag4;
+
+    public static ReportSimilarCase create(Long reportId, String regionCode, String summary, String description,
+                                            Integer startYear, Integer endYear,
+                                            String tag1, String tag2, String tag3, String tag4) {
+        ReportSimilarCase c = new ReportSimilarCase();
+        c.id = UUID.randomUUID().toString();
+        c.reportId = reportId;
+        c.regionCode = regionCode;
+        c.summary = summary;
+        c.description = description;
+        c.startYear = startYear != null ? startYear.shortValue() : null;
+        c.endYear = endYear != null ? endYear.shortValue() : null;
+        c.tag1 = tag1;
+        c.tag2 = tag2;
+        c.tag3 = tag3;
+        c.tag4 = tag4;
+        return c;
+    }
 }

@@ -27,11 +27,12 @@ public class ReportDetailService {
     private final RegionRepository regionRepository;
     private final DistrictRepository districtRepository;
     private final CategoryRepository categoryRepository;
+    private final ReportGenerateService reportGenerateService;
 
     public ReportDetailResponse getLatest(Long userId) {
         Report latest = reportRepository.findByUserId(userId).stream()
                 .max(Comparator.comparingInt(Report::getYear).thenComparingInt(Report::getQuarter))
-                .orElseThrow(() -> AppException.notFound("생성된 리포트가 없습니다."));
+                .orElseGet(() -> reportGenerateService.generateAndSave(userId));
         return buildDetail(latest);
     }
 

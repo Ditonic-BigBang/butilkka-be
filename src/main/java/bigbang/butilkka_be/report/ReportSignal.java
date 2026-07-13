@@ -24,4 +24,12 @@ public class ReportSignal {
 
     @Column(length = 255)
     private String description;
+
+    public static ReportSignal create(Long reportId, String title, String description) {
+        ReportSignal signal = new ReportSignal();
+        signal.reportId = reportId;
+        signal.title = title;
+        signal.description = description;
+        return signal;
+    }
 }
