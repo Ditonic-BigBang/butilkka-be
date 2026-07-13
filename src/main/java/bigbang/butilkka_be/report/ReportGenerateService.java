@@ -37,6 +37,7 @@ public class ReportGenerateService {
     private final ReportSignalRepository reportSignalRepository;
     private final ReportSimilarCaseRepository reportSimilarCaseRepository;
     private final ReportAlternativeRegionRepository reportAlternativeRegionRepository;
+    private final ReportDecisionReasonsRepository reportDecisionReasonsRepository;
 
     @Transactional
     public Report generateAndSave(Long userId) {
@@ -130,7 +131,7 @@ public class ReportGenerateService {
         // Similar Cases 저장
         for (var sc : aiResponse.similarCases()) {
             reportSimilarCaseRepository.save(ReportSimilarCase.create(
-                    reportId, sc.regionCode(), sc.summary(), sc.description(),
+                    reportId, sc.regionCode(), sc.regionName(), sc.summary(), sc.description(),
                     sc.startYear(), sc.endYear(), sc.tag1(), sc.tag2(), sc.tag3(), sc.tag4()
             ));
         }
@@ -139,6 +140,16 @@ public class ReportGenerateService {
         for (var ar : aiResponse.alternativeRegions()) {
             reportAlternativeRegionRepository.save(ReportAlternativeRegion.create(
                     reportId, ar.regionCode(), ar.reason(), ar.stat()
+            ));
+        }
+
+        // Decision Reasons 저장
+        if (aiResponse.decisionReasons() != null) {
+            reportDecisionReasonsRepository.save(ReportDecisionReasons.create(
+                    reportId,
+                    aiResponse.decisionReasons().reason1(),
+                    aiResponse.decisionReasons().reason2(),
+                    aiResponse.decisionReasons().reason3()
             ));
         }
 

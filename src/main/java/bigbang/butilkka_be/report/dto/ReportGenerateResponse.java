@@ -37,6 +37,7 @@ public record ReportGenerateResponse(
 
     public record AiSimilarCase(
             @JsonProperty("region_code") String regionCode,
+            @JsonProperty("region_name") String regionName,
             String summary,
             String description,
             @JsonProperty("start_year") Integer startYear,

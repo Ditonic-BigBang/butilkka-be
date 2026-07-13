@@ -23,6 +23,9 @@ public class ReportSimilarCase {
     @Column(name = "region_code", nullable = false, length = 20)
     private String regionCode;
 
+    @Column(name = "region_name", length = 50)
+    private String regionName;
+
     @Column(length = 255)
     private String summary;
 
@@ -47,13 +50,14 @@ public class ReportSimilarCase {
     @Column(length = 20)
     private String tag4;
 
-    public static ReportSimilarCase create(Long reportId, String regionCode, String summary, String description,
+    public static ReportSimilarCase create(Long reportId, String regionCode, String regionName, String summary, String description,
                                             Integer startYear, Integer endYear,
                                             String tag1, String tag2, String tag3, String tag4) {
         ReportSimilarCase c = new ReportSimilarCase();
         c.id = UUID.randomUUID().toString();
         c.reportId = reportId;
         c.regionCode = regionCode;
+        c.regionName = regionName;
         c.summary = summary;
         c.description = description;
         c.startYear = startYear != null ? startYear.shortValue() : null;

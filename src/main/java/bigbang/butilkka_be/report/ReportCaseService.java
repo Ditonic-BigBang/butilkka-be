@@ -38,10 +38,15 @@ public class ReportCaseService {
     }
 
     private ReportCaseListResponse.ReportCaseItem toCaseItem(ReportSimilarCase c) {
-        Region region = regionRepository.findById(c.getRegionCode())
-                .orElseThrow(() -> AppException.notFound("존재하지 않는 상권코드입니다."));
+        // AI가 보내준 regionName 우선 사용, 없으면 DB 조회 fallback
+        String regionName = c.getRegionName();
+        if (regionName == null || regionName.isBlank()) {
+            regionName = regionRepository.findById(c.getRegionCode())
+                    .map(Region::getRegionName)
+                    .orElse("알 수 없음");
+        }
         return new ReportCaseListResponse.ReportCaseItem(
-                c.getId(), c.getRegionCode(), region.getRegionName(), c.getSummary(), c.getDescription(),
+                c.getId(), c.getRegionCode(), regionName, c.getSummary(), c.getDescription(),
                 c.getTag1(), c.getTag2(), c.getTag3(), c.getTag4(),
                 new ReportCaseListResponse.Period(toNullableInt(c.getStartYear()), toNullableInt(c.getEndYear())));
     }

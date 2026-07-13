@@ -36,8 +36,16 @@
 
 **교훈**: `BeanFactoryPostProcessor`/`BeanDefinitionRegistryPostProcessor` 안에서 `@ConfigurationProperties` 기반 빈을 미리 조회하면 (설령 예외를 잡더라도) 그 빈이 빈 상태로 캐시되어 이후 정상 생성 시점까지 오염시킬 수 있다. 이런 빈은 절대 이 단계에서 건드리면 안 됨.
 
+## AI 서버 배포 완료 (2026-07-13)
+
+- **AI 서버(FastAPI)**: 새 EC2에 배포 완료
+  - URL: `http://3.38.26.1:8000` (Elastic IP, 고정)
+  - Health check: `GET /health` → `{"status":"ok","redis":"connected"}`
+  - 리포트 생성: `POST /api/report/generate` (20~30초 소요)
+- BE의 `AI_SERVER_URL` 기본값이 이미 `http://3.38.26.1:8000`으로 설정되어 있어 별도 환경변수 설정 불필요
+- 리포트 생성 기능 정상 동작 확인됨
+
 ## 알려진 후속 작업 (미완료)
 
-- **AI 서버(FastAPI)/Redis**: 기존 EC2(Amazon Linux, 폐기)에 떠 있던 `butilkka_fastapi`, `redis` 컨테이너는 이번 재구축 대상에서 제외됨 — 별도 리포지토리/작업으로 새 EC2에 다시 올려야 함. 그 전까지 `AI_SERVER_URL` 관련 기능(리포트 생성 등)은 동작 안 함
 - `butilkka-mysql`의 비밀번호가 `1234`로 약함 — 운영 트래픽 늘기 전에 강한 비밀번호로 교체 권장 (GitHub Secret `DB_PASSWORD`, `SPRING_DATASOURCE_PASSWORD`도 함께 갱신 필요)
 - 기존에 쓰던 Amazon Linux 인스턴스(초기 실수로 생성)는 안 쓰면 종료해서 과금 방지 필요

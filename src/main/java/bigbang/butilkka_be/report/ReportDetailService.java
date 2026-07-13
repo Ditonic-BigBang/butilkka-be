@@ -98,10 +98,15 @@ public class ReportDetailService {
     }
 
     private ReportDetailResponse.SimilarCasePreview toSimilarCasePreview(ReportSimilarCase c) {
-        Region region = regionRepository.findById(c.getRegionCode())
-                .orElseThrow(() -> AppException.notFound("존재하지 않는 상권코드입니다."));
+        // AI가 보내준 regionName 우선 사용, 없으면 DB 조회 fallback
+        String regionName = c.getRegionName();
+        if (regionName == null || regionName.isBlank()) {
+            regionName = regionRepository.findById(c.getRegionCode())
+                    .map(Region::getRegionName)
+                    .orElse("알 수 없음");
+        }
         return new ReportDetailResponse.SimilarCasePreview(
-                c.getId(), c.getRegionCode(), region.getRegionName(), c.getSummary(),
+                c.getId(), c.getRegionCode(), regionName, c.getSummary(),
                 new ReportDetailResponse.Period(toNullableInt(c.getStartYear()), toNullableInt(c.getEndYear())));
     }
 
