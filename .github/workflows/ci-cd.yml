@@ -82,4 +82,5 @@ jobs:
               -e "KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}" \
               -e "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" \
               -e COOKIE_SECURE=true \
+              -e AI_SERVER_URL=http://3.38.26.1:8000 \
               ${{ secrets.DOCKER_USERNAME }}/butilkka-be:latest
