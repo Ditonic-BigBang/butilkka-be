@@ -8,6 +8,8 @@ import bigbang.butilkka_be.region.DistrictRepository;
 import bigbang.butilkka_be.region.Region;
 import bigbang.butilkka_be.region.RegionRepository;
 import bigbang.butilkka_be.report.dto.ReportDetailResponse;
+import bigbang.butilkka_be.user.User;
+import bigbang.butilkka_be.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,6 +45,8 @@ class ReportDetailServiceTest {
     @Mock
     private CategoryRepository categoryRepository;
     @Mock
+    private UserRepository userRepository;
+    @Mock
     private ReportGenerateService reportGenerateService;
 
     private ReportDetailService service;
@@ -52,7 +56,7 @@ class ReportDetailServiceTest {
         service = new ReportDetailService(
                 reportRepository, reportCauseRepository, reportSignalRepository,
                 reportSimilarCaseRepository, reportAlternativeRegionRepository,
-                regionRepository, districtRepository, categoryRepository, reportGenerateService);
+                regionRepository, districtRepository, categoryRepository, userRepository, reportGenerateService);
     }
 
     private static Report reportOf(Long reportId, Long userId, int year, int quarter, String grade, int score) {
@@ -93,6 +97,10 @@ class ReportDetailServiceTest {
 
     @Test
     void getLatest_picksHighestYearQuarter() {
+        User user = mock(User.class);
+        when(user.getStoreRegion()).thenReturn("1168064000");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
         Report older = reportOf(5L, 1L, 2026, 1, "B", 70);
         Report newer = reportOf(1L, 1L, 2026, 4, "A", 90);
         when(reportRepository.findByUserId(1L)).thenReturn(List.of(older, newer));
@@ -115,6 +123,10 @@ class ReportDetailServiceTest {
 
     @Test
     void getLatest_withNoReports_generatesNewReport() {
+        User user = mock(User.class);
+        when(user.getStoreRegion()).thenReturn("1168064000");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
         Report generated = reportOf(10L, 1L, 2026, 3, "B", 70);
         when(reportRepository.findByUserId(1L)).thenReturn(List.of());
         when(reportGenerateService.generateAndSave(1L)).thenReturn(generated);

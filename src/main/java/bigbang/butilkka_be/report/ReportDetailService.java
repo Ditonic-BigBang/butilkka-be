@@ -8,6 +8,8 @@ import bigbang.butilkka_be.region.DistrictRepository;
 import bigbang.butilkka_be.region.Region;
 import bigbang.butilkka_be.region.RegionRepository;
 import bigbang.butilkka_be.report.dto.ReportDetailResponse;
+import bigbang.butilkka_be.user.User;
+import bigbang.butilkka_be.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -27,10 +29,21 @@ public class ReportDetailService {
     private final RegionRepository regionRepository;
     private final DistrictRepository districtRepository;
     private final CategoryRepository categoryRepository;
+    private final UserRepository userRepository;
     private final ReportGenerateService reportGenerateService;
 
     public ReportDetailResponse getLatest(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> AppException.notFound("사용자를 찾을 수 없습니다."));
+        String currentRegion = user.getStoreRegion();
+
+        if (currentRegion == null) {
+            throw AppException.badRequest("등록된 가게 정보가 없습니다.");
+        }
+
+        // 현재 대표 위치(storeRegion)에 해당하는 리포트만 조회
         Report latest = reportRepository.findByUserId(userId).stream()
+                .filter(r -> currentRegion.equals(r.getRegionCode()))
                 .max(Comparator.comparingInt(Report::getYear).thenComparingInt(Report::getQuarter))
                 .orElseGet(() -> reportGenerateService.generateAndSave(userId));
         return buildDetail(latest);
