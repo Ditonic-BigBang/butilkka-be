@@ -118,6 +118,11 @@ public class User {
         this.isOnboarded = true;
     }
 
+    public void syncStoreRegion(String regionCode, String categoryCode) {
+        this.storeRegion = regionCode;
+        this.categoryCode = categoryCode;
+    }
+
     public void activateReportPro() {
         this.isReportPro = true;
     }

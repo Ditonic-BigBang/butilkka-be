@@ -60,9 +60,12 @@ public class StoreService {
 
         storeRepository.save(store);
 
-        // 첫 가게 등록 시 온보딩 완료 처리
-        if (isFirst && !user.isOnboarded()) {
-            user.completeOnboarding();
+        // 첫 가게 등록 시 온보딩 완료 처리 및 user.storeRegion 동기화
+        if (isFirst) {
+            if (!user.isOnboarded()) {
+                user.completeOnboarding();
+            }
+            user.syncStoreRegion(request.regionCode(), request.categoryCode());
         }
 
         return toResponse(store);
@@ -83,21 +86,31 @@ public class StoreService {
         }
 
         // 대표 지정 처리
-        if (Boolean.TRUE.equals(request.isPrimary()) && !store.isPrimary()) {
+        boolean becamePrimary = Boolean.TRUE.equals(request.isPrimary()) && !store.isPrimary();
+        if (becamePrimary) {
             storeRepository.clearPrimaryByUserId(userId);
             store.setPrimary(true);
         }
 
         // 가게 정보 업데이트
+        String finalRegionCode = request.regionCode() != null ? request.regionCode() : store.getRegionCode();
+        String finalCategoryCode = request.categoryCode() != null ? request.categoryCode() : store.getCategoryCode();
         store.update(
                 request.storeName() != null ? request.storeName() : store.getStoreName(),
                 request.storeAddress() != null ? request.storeAddress() : store.getStoreAddress(),
                 request.storeOpenDate() != null ? request.storeOpenDate() : store.getStoreOpenDate(),
-                request.regionCode() != null ? request.regionCode() : store.getRegionCode(),
-                request.categoryCode() != null ? request.categoryCode() : store.getCategoryCode(),
+                finalRegionCode,
+                finalCategoryCode,
                 request.lat() != null ? request.lat() : store.getLat(),
                 request.lng() != null ? request.lng() : store.getLng()
         );
+
+        // 대표 가게면 user.storeRegion 동기화 (리포트 생성에 필요)
+        if (store.isPrimary()) {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> AppException.notFound("사용자를 찾을 수 없습니다"));
+            user.syncStoreRegion(finalRegionCode, finalCategoryCode);
+        }
 
         return toResponse(store);
     }
@@ -110,11 +123,15 @@ public class StoreService {
         boolean wasPrimary = store.isPrimary();
         storeRepository.delete(store);
 
-        // 대표 가게 삭제 시 다음 가게를 대표로 승격
+        // 대표 가게 삭제 시 다음 가게를 대표로 승격 및 user.storeRegion 동기화
         if (wasPrimary) {
             List<Store> remaining = storeRepository.findByUserIdOrderByIsPrimaryDescCreatedAtDesc(userId);
             if (!remaining.isEmpty()) {
-                remaining.get(0).setPrimary(true);
+                Store promoted = remaining.get(0);
+                promoted.setPrimary(true);
+                User user = userRepository.findById(userId)
+                        .orElseThrow(() -> AppException.notFound("사용자를 찾을 수 없습니다"));
+                user.syncStoreRegion(promoted.getRegionCode(), promoted.getCategoryCode());
             }
         }
     }
