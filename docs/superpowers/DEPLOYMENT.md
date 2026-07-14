@@ -42,7 +42,7 @@
   - URL: `http://3.38.26.1:8000` (Elastic IP, 고정)
   - Health check: `GET /health` → `{"status":"ok","redis":"connected"}`
   - 리포트 생성: `POST /api/report/generate` (20~30초 소요)
-- BE의 `AI_SERVER_URL` 기본값이 이미 `http://3.38.26.1:8000`으로 설정되어 있어 별도 환경변수 설정 불필요
+- BE의 `AI_SERVER_URL` 기본값이 이미 `http://3.38.26.1:8000`으로 설정되어 있었으나, 배포 환경에서 다른 값으로 덮어써질 가능성을 차단하기 위해 CD(`ci-cd.yml`)의 `docker run`에 `AI_SERVER_URL=http://3.38.26.1:8000`을 명시적으로 추가함
 - 리포트 생성 기능 정상 동작 확인됨
 
 ## 알려진 후속 작업 (미완료)
