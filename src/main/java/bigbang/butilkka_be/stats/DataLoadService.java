@@ -342,15 +342,29 @@ public class DataLoadService {
     }
 
     private void updateDistrictRanksIfNeeded() {
-        // districtRank가 NULL인 레코드가 있으면 업데이트
         List<DistrictStats> allStats = districtStatsRepository.findAll();
-        boolean needsUpdate = allStats.stream().anyMatch(s -> s.getDistrictRank() == null);
 
-        if (!needsUpdate) {
-            log.info("districtRank 이미 설정됨 → skip");
+        // 업데이트 필요 조건: districtRank NULL 또는 매출이 분식전문점 데이터(낮은 값)인 경우
+        boolean needsRankUpdate = allStats.stream().anyMatch(s -> s.getDistrictRank() == null);
+        boolean needsSalesUpdate = allStats.stream().anyMatch(s ->
+                s.getSalesAmount() != null && s.getSalesAmount() < 100_000_000_000L);  // 1000억 미만이면 분식전문점 데이터
+
+        if (!needsRankUpdate && !needsSalesUpdate) {
+            log.info("데이터 이미 최신 상태 → skip");
             return;
         }
 
+        // 데이터 전체 재로드 필요 (카테고리 필터가 변경됨)
+        if (needsSalesUpdate) {
+            log.info("매출/점포 데이터 재로드 필요 → 전체 삭제 후 재적재");
+            districtStatsRepository.deleteAll();
+            List<DistrictStats> newStats = buildDistrictStats();
+            districtStatsRepository.saveAll(newStats);
+            log.info("구별 CSV 데이터 재적재 완료: {}건", newStats.size());
+            return;
+        }
+
+        // districtRank만 업데이트
         log.info("districtRank 업데이트 시작");
         var rankMap = readGuGrade();
 
@@ -467,7 +481,7 @@ public class DataLoadService {
 
             for (CSVRecord r : parser) {
                 String category = r.get("카테고리");
-                if (!"분식전문점".equals(category)) continue;  // 기본 카테고리로 필터링
+                if (!"전체".equals(category)) continue;  // 전체 매출 사용
 
                 String districtCode = r.get("구코드");
                 String districtName = r.get("구명");
@@ -519,7 +533,7 @@ public class DataLoadService {
 
             for (CSVRecord r : parser) {
                 String category = r.get("카테고리");
-                if (!"분식전문점".equals(category)) continue;
+                if (!"전체".equals(category)) continue;  // 전체 점포수 사용
 
                 String districtCode = r.get("구코드");
                 String quarterStr = r.get("분기코드");

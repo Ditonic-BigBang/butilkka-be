@@ -44,7 +44,7 @@ public class RegionDetailService {
                 buildGradeSummary(history, latest, previous),
                 buildMetricSummary(history, s -> s.getRentAmount(), DistrictStats::getRentDelta),
                 buildMetricSummary(history, s -> s.getFootTraffic(), DistrictStats::getFootTrafficDelta),
-                buildRateMetricSummary(history, DistrictStats::getVacancyRate, DistrictStats::getVacancyRateDelta),
+                buildVacancyRateSummary(history),  // 공실률은 CSV에 이미 %로 저장됨
                 buildClosureRateSummary(history, latest),
                 buildStoreCountSummary(history, latest)
         );
@@ -82,6 +82,16 @@ public class RegionDetailService {
                 .toList();
         String direction = resolveDirection(deltaFn.apply(latest));
         return new MetricSummary(toPercent(valueFn.apply(latest)), toPercent(deltaFn.apply(latest)), direction, trend);
+    }
+
+    private MetricSummary buildVacancyRateSummary(List<DistrictStats> history) {
+        // 공실률은 CSV에 이미 %로 저장됨 (3.32 = 3.32%)
+        DistrictStats latest = history.get(history.size() - 1);
+        List<MetricTrendPoint> trend = history.stream()
+                .map(s -> new MetricTrendPoint(label(s), toDouble(s.getVacancyRate())))
+                .toList();
+        String direction = resolveDirection(latest.getVacancyRateDelta());
+        return new MetricSummary(toDouble(latest.getVacancyRate()), toDouble(latest.getVacancyRateDelta()), direction, trend);
     }
 
     private ClosureRateSummary buildClosureRateSummary(List<DistrictStats> history, DistrictStats latest) {
@@ -126,5 +136,9 @@ public class RegionDetailService {
 
     private Double toPercent(Number value) {
         return value == null ? null : value.doubleValue() * 100;
+    }
+
+    private Double toDouble(Number value) {
+        return value == null ? null : value.doubleValue();
     }
 }
