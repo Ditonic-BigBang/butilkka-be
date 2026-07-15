@@ -5,5 +5,5 @@ import java.util.List;
 public record MetricMapResponse(
         String metric,
         String quarter,
-        List<MetricMapItem> districts
+        List<MetricMapItem> regions
 ) {}

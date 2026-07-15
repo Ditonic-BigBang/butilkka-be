@@ -56,22 +56,38 @@ public class MetricRankingService {
             items.add(toRankingItem(sorted.get(i), metric, i + 1));
         }
 
-        return new MetricRankingResponse(metric, order, quarterLabel, items);
+        // closureRate일 때만 avgOperatingYears 포함 (서울 평균 등)
+        BigDecimal avgOperatingYears = "closureRate".equals(metric)
+                ? calculateSeoulAvgOperatingYears(statsList)
+                : null;
+
+        return new MetricRankingResponse(metric, order, quarterLabel, items, avgOperatingYears);
     }
 
     private MetricRankingItem toRankingItem(DistrictStats stats, String metric, int rank) {
         BigDecimal value = extractMetricValue(stats, metric);
-        BigDecimal avgOpYears = "closureRate".equals(metric)
-                ? stats.getAvgOperatingYears()
-                : null;
+        String direction = stats.getDirection() != null ? stats.getDirection() : "FLAT";
+        // direction 값을 FE 기대 형식으로 변환 (성장→UP, 쇠퇴→DOWN, 유지/정체→FLAT)
+        direction = switch (direction) {
+            case "성장" -> "UP";
+            case "쇠퇴" -> "DOWN";
+            default -> "FLAT";
+        };
         return new MetricRankingItem(
                 rank,
                 stats.getDistrictCode(),
                 stats.getDistrictName(),
-                stats.getDeclineGrade(),
                 value,
-                avgOpYears
+                direction
         );
+    }
+
+    private BigDecimal calculateSeoulAvgOperatingYears(List<DistrictStats> statsList) {
+        return statsList.stream()
+                .map(DistrictStats::getAvgOperatingYears)
+                .filter(v -> v != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(Math.max(1, statsList.size())), 2, java.math.RoundingMode.HALF_UP);
     }
 
     private Comparator<DistrictStats> getComparator(String metric, String order) {

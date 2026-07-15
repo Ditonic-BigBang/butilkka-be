@@ -53,7 +53,7 @@ public class MetricMapService {
         return new MetricMapItem(
                 stats.getDistrictCode(),
                 stats.getDistrictName(),
-                stats.getDeclineGrade(),
+                stats.getDistrictName(),  // district = 구명
                 value
         );
     }
