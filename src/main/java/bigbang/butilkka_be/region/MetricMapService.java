@@ -3,7 +3,6 @@ package bigbang.butilkka_be.region;
 import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.region.dto.MetricMapItem;
 import bigbang.butilkka_be.region.dto.MetricMapResponse;
-import bigbang.butilkka_be.stats.CommercialStatsQueryService;
 import bigbang.butilkka_be.stats.DistrictStats;
 import bigbang.butilkka_be.stats.DistrictStatsQueryService;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +10,10 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +21,7 @@ public class MetricMapService {
 
     private static final Set<String> SUPPORTED_METRICS =
             Set.of("rentRatio", "footTraffic", "vacancyRate", "closureRate", "storeCount");
+    private static final Pattern QUARTER_PATTERN = Pattern.compile("(\\d{4})Q([1-4])");
 
     private final DistrictStatsQueryService districtStatsQueryService;
 
@@ -32,7 +35,7 @@ public class MetricMapService {
             statsList = districtStatsQueryService.latestPerDistrict();
             quarterLabel = districtStatsQueryService.getLatestQuarterLabel();
         } else {
-            int[] parsed = CommercialStatsQueryService.parseQuarterLabel(quarterParam)
+            int[] parsed = parseQuarterLabel(quarterParam)
                     .orElseThrow(() -> AppException.badRequest("지원하지 않는 분기 형식입니다."));
             statsList = districtStatsQueryService.forQuarter(parsed[0], parsed[1]);
             quarterLabel = quarterParam;
@@ -72,5 +75,13 @@ public class MetricMapService {
         if (!SUPPORTED_METRICS.contains(metric)) {
             throw AppException.badRequest("지원하지 않는 지표입니다.");
         }
+    }
+
+    private static Optional<int[]> parseQuarterLabel(String label) {
+        Matcher m = QUARTER_PATTERN.matcher(label);
+        if (!m.matches()) {
+            return Optional.empty();
+        }
+        return Optional.of(new int[]{Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2))});
     }
 }
