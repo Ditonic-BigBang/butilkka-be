@@ -1,7 +1,5 @@
 package bigbang.butilkka_be.region;
 
-import bigbang.butilkka_be.category.Category;
-import bigbang.butilkka_be.category.CategoryRepository;
 import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.region.dto.CategoryCount;
 import bigbang.butilkka_be.region.dto.ClosureRateSummary;
@@ -9,8 +7,8 @@ import bigbang.butilkka_be.region.dto.MetricSummary;
 import bigbang.butilkka_be.region.dto.MetricTrendPoint;
 import bigbang.butilkka_be.region.dto.RegionDetailResponse;
 import bigbang.butilkka_be.region.dto.StoreCountSummary;
-import bigbang.butilkka_be.stats.CommercialStats;
-import bigbang.butilkka_be.stats.CommercialStatsQueryService;
+import bigbang.butilkka_be.stats.DistrictStats;
+import bigbang.butilkka_be.stats.DistrictStatsQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,41 +22,36 @@ public class RegionDetailService {
 
     private static final BigDecimal SEOUL_AVG_OPERATING_YEARS = new BigDecimal("4.1");
 
-    private final CommercialStatsQueryService commercialStatsQueryService;
-    private final RegionRepository regionRepository;
-    private final DistrictRepository districtRepository;
-    private final CategoryRepository categoryRepository;
+    private final DistrictStatsQueryService districtStatsQueryService;
 
-    public RegionDetailResponse getDetail(String regionCode) {
-        Region region = regionRepository.findById(regionCode)
-                .orElseThrow(() -> AppException.notFound("존재하지 않는 상권코드입니다."));
-        District district = districtRepository.findById(region.getDistrictCode())
-                .orElseThrow(() -> AppException.notFound("존재하지 않는 자치구코드입니다."));
+    public RegionDetailResponse getDetail(String code) {
+        // 10자리 행정동 코드가 오면 앞 5자리로 구 코드 추출
+        String districtCode = code.length() >= 5 ? code.substring(0, 5) : code;
 
-        List<CommercialStats> history = commercialStatsQueryService.historyForRegion(regionCode);
+        List<DistrictStats> history = districtStatsQueryService.historyForDistrict(districtCode);
         if (history.isEmpty()) {
-            throw AppException.notFound("존재하지 않는 상권코드입니다.");
+            throw AppException.notFound("존재하지 않는 구코드입니다.");
         }
 
-        CommercialStats latest = history.get(history.size() - 1);
-        CommercialStats previous = history.size() >= 2 ? history.get(history.size() - 2) : null;
+        DistrictStats latest = history.get(history.size() - 1);
+        DistrictStats previous = history.size() >= 2 ? history.get(history.size() - 2) : null;
 
         return new RegionDetailResponse(
-                region.getRegionCode(),
-                district.getDistrictName(),
-                region.getRegionName(),
+                districtCode,
+                latest.getDistrictName(),  // district field
+                latest.getDistrictName(),  // regionName (구 기반이므로 동일)
                 label(latest),
                 buildGradeSummary(history, latest, previous),
-                buildMetricSummary(history, CommercialStats::getRentAmount, CommercialStats::getRentDelta),
-                buildMetricSummary(history, s -> s.getFootTraffic(), CommercialStats::getFootTrafficDelta),
-                buildRateMetricSummary(history, CommercialStats::getVacancyRate, CommercialStats::getVacancyRateDelta),
+                buildMetricSummary(history, s -> s.getRentAmount(), DistrictStats::getRentDelta),
+                buildMetricSummary(history, s -> s.getFootTraffic(), DistrictStats::getFootTrafficDelta),
+                buildRateMetricSummary(history, DistrictStats::getVacancyRate, DistrictStats::getVacancyRateDelta),
                 buildClosureRateSummary(history, latest),
                 buildStoreCountSummary(history, latest)
         );
     }
 
     private RegionDetailResponse.DeclineGradeSummary buildGradeSummary(
-            List<CommercialStats> history, CommercialStats latest, CommercialStats previous) {
+            List<DistrictStats> history, DistrictStats latest, DistrictStats previous) {
         List<RegionDetailResponse.GradeTrendPoint> trend = history.stream()
                 .map(s -> new RegionDetailResponse.GradeTrendPoint(label(s), s.getDeclineGrade()))
                 .toList();
@@ -67,10 +60,10 @@ public class RegionDetailService {
     }
 
     private MetricSummary buildMetricSummary(
-            List<CommercialStats> history,
-            Function<CommercialStats, Number> valueFn,
-            Function<CommercialStats, Number> deltaFn) {
-        CommercialStats latest = history.get(history.size() - 1);
+            List<DistrictStats> history,
+            Function<DistrictStats, Number> valueFn,
+            Function<DistrictStats, Number> deltaFn) {
+        DistrictStats latest = history.get(history.size() - 1);
         List<MetricTrendPoint> trend = history.stream()
                 .map(s -> new MetricTrendPoint(label(s), valueFn.apply(s)))
                 .toList();
@@ -80,10 +73,10 @@ public class RegionDetailService {
     }
 
     private MetricSummary buildRateMetricSummary(
-            List<CommercialStats> history,
-            Function<CommercialStats, Number> valueFn,
-            Function<CommercialStats, Number> deltaFn) {
-        CommercialStats latest = history.get(history.size() - 1);
+            List<DistrictStats> history,
+            Function<DistrictStats, Number> valueFn,
+            Function<DistrictStats, Number> deltaFn) {
+        DistrictStats latest = history.get(history.size() - 1);
         List<MetricTrendPoint> trend = history.stream()
                 .map(s -> new MetricTrendPoint(label(s), toPercent(valueFn.apply(s))))
                 .toList();
@@ -91,25 +84,25 @@ public class RegionDetailService {
         return new MetricSummary(toPercent(valueFn.apply(latest)), toPercent(deltaFn.apply(latest)), direction, trend);
     }
 
-    private ClosureRateSummary buildClosureRateSummary(List<CommercialStats> history, CommercialStats latest) {
+    private ClosureRateSummary buildClosureRateSummary(List<DistrictStats> history, DistrictStats latest) {
         List<MetricTrendPoint> trend = history.stream()
                 .map(s -> new MetricTrendPoint(label(s), toPercent(s.getClosureRate())))
                 .toList();
         String direction = resolveDirection(latest.getClosureRateDelta());
+        BigDecimal avgYears = latest.getAvgOperatingYears() != null ? latest.getAvgOperatingYears() : SEOUL_AVG_OPERATING_YEARS;
         return new ClosureRateSummary(
                 toPercent(latest.getClosureRate()), toPercent(latest.getClosureRateDelta()), direction, trend,
-                latest.getAvgBusinessPeriod(), SEOUL_AVG_OPERATING_YEARS);
+                avgYears, SEOUL_AVG_OPERATING_YEARS);
     }
 
-    private StoreCountSummary buildStoreCountSummary(List<CommercialStats> history, CommercialStats latest) {
+    private StoreCountSummary buildStoreCountSummary(List<DistrictStats> history, DistrictStats latest) {
         List<MetricTrendPoint> trend = history.stream()
                 .map(s -> new MetricTrendPoint(label(s), s.getStoreCount()))
                 .toList();
         String direction = resolveDirection(latest.getStoreCountDelta());
-        Category category = categoryRepository.findById(latest.getCategoryCode())
-                .orElseThrow(() -> AppException.notFound("존재하지 않는 업종코드입니다."));
+        // 구 기반에서는 카테고리 분포 없이 전체 점포수만 반환
         List<CategoryCount> categoryDistribution = List.of(
-                new CategoryCount(category.getCategoryName(), latest.getStoreCount()));
+                new CategoryCount("전체", latest.getStoreCount()));
         return new StoreCountSummary(latest.getStoreCount(), toPercent(latest.getStoreCountDelta()), direction, trend, categoryDistribution);
     }
 
@@ -127,7 +120,7 @@ public class RegionDetailService {
         return "FLAT";
     }
 
-    private String label(CommercialStats stats) {
+    private String label(DistrictStats stats) {
         return stats.getYear() + "Q" + stats.getQuarter();
     }
 

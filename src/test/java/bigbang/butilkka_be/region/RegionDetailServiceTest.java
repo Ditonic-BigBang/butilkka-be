@@ -1,11 +1,9 @@
 package bigbang.butilkka_be.region;
 
-import bigbang.butilkka_be.category.Category;
-import bigbang.butilkka_be.category.CategoryRepository;
 import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.region.dto.RegionDetailResponse;
-import bigbang.butilkka_be.stats.CommercialStats;
-import bigbang.butilkka_be.stats.CommercialStatsQueryService;
+import bigbang.butilkka_be.stats.DistrictStats;
+import bigbang.butilkka_be.stats.DistrictStatsQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,7 +14,6 @@ import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,25 +25,21 @@ import static org.mockito.Mockito.when;
 class RegionDetailServiceTest {
 
     @Mock
-    private CommercialStatsQueryService commercialStatsQueryService;
-    @Mock
-    private RegionRepository regionRepository;
-    @Mock
-    private DistrictRepository districtRepository;
-    @Mock
-    private CategoryRepository categoryRepository;
+    private DistrictStatsQueryService districtStatsQueryService;
 
     private RegionDetailService service;
 
     @BeforeEach
     void setUp() {
-        service = new RegionDetailService(commercialStatsQueryService, regionRepository, districtRepository, categoryRepository);
+        service = new RegionDetailService(districtStatsQueryService);
     }
 
-    private static CommercialStats statsOf(int year, int quarter, String grade, int footTraffic, long rentAmount,
-                                            BigDecimal vacancyRate, BigDecimal closureRate, BigDecimal avgBusinessPeriod,
-                                            int storeCount, String categoryCode) {
-        CommercialStats stats = mock(CommercialStats.class);
+    private static DistrictStats statsOf(String districtCode, String districtName, int year, int quarter, String grade,
+                                          long footTraffic, BigDecimal rentAmount, BigDecimal vacancyRate,
+                                          BigDecimal closureRate, int storeCount) {
+        DistrictStats stats = mock(DistrictStats.class);
+        when(stats.getDistrictCode()).thenReturn(districtCode);
+        when(stats.getDistrictName()).thenReturn(districtName);
         when(stats.getYear()).thenReturn(year);
         when(stats.getQuarter()).thenReturn(quarter);
         when(stats.getDeclineGrade()).thenReturn(grade);
@@ -58,50 +51,46 @@ class RegionDetailServiceTest {
         when(stats.getVacancyRateDelta()).thenReturn(BigDecimal.ZERO);
         when(stats.getClosureRate()).thenReturn(closureRate);
         when(stats.getClosureRateDelta()).thenReturn(BigDecimal.ZERO);
-        when(stats.getAvgBusinessPeriod()).thenReturn(avgBusinessPeriod);
         when(stats.getStoreCount()).thenReturn(storeCount);
         when(stats.getStoreCountDelta()).thenReturn(BigDecimal.ZERO);
-        when(stats.getCategoryCode()).thenReturn(categoryCode);
-        when(stats.getRegionCode()).thenReturn("1168064000");
+        when(stats.getAvgOperatingYears()).thenReturn(new BigDecimal("3.5"));
         return stats;
     }
 
     @Test
     void getDetail_withHistory_buildsAllMetricSummaries() {
-        CommercialStats q1 = statsOf(2026, 1, "B", 100000, 40000000L, new BigDecimal("4.0"), new BigDecimal("5.0"), new BigDecimal("3.0"), 450, "CS100001");
-        CommercialStats q2 = statsOf(2026, 2, "A", 110000, 41000000L, new BigDecimal("3.5"), new BigDecimal("4.5"), new BigDecimal("3.1"), 452, "CS100001");
-        when(commercialStatsQueryService.historyForRegion("1168064000")).thenReturn(List.of(q1, q2));
+        DistrictStats q1 = statsOf("11680", "강남구", 2026, 1, "B", 100000L, new BigDecimal("40000000"), new BigDecimal("0.04"), new BigDecimal("0.05"), 450);
+        DistrictStats q2 = statsOf("11680", "강남구", 2026, 2, "A", 110000L, new BigDecimal("41000000"), new BigDecimal("0.035"), new BigDecimal("0.045"), 452);
+        when(districtStatsQueryService.historyForDistrict("11680")).thenReturn(List.of(q1, q2));
 
-        Region region = mock(Region.class);
-        when(region.getRegionCode()).thenReturn("1168064000");
-        when(region.getRegionName()).thenReturn("역삼1동");
-        when(region.getDistrictCode()).thenReturn("11680");
-        when(regionRepository.findById("1168064000")).thenReturn(Optional.of(region));
+        RegionDetailResponse response = service.getDetail("1168064000"); // 10자리 코드 → 앞 5자리로 구코드 추출
 
-        District district = mock(District.class);
-        when(district.getDistrictName()).thenReturn("강남구");
-        when(districtRepository.findById("11680")).thenReturn(Optional.of(district));
-
-        Category category = mock(Category.class);
-        when(category.getCategoryName()).thenReturn("한식음식점");
-        when(categoryRepository.findById("CS100001")).thenReturn(Optional.of(category));
-
-        RegionDetailResponse response = service.getDetail("1168064000");
-
-        assertThat(response.regionName()).isEqualTo("역삼1동");
+        assertThat(response.regionCode()).isEqualTo("11680");
+        assertThat(response.regionName()).isEqualTo("강남구");
         assertThat(response.declineGrade().current()).isEqualTo("A");
         assertThat(response.declineGrade().previous()).isEqualTo("B");
         assertThat(response.declineGrade().trend()).hasSize(2);
-        assertThat(response.footTraffic().value()).isEqualTo(110000);
+        assertThat(response.footTraffic().value()).isEqualTo(110000L);
         assertThat(response.storeCount().categoryDistribution()).hasSize(1);
-        assertThat(response.storeCount().categoryDistribution().get(0).category()).isEqualTo("한식음식점");
+        assertThat(response.storeCount().categoryDistribution().get(0).category()).isEqualTo("전체");
     }
 
     @Test
-    void getDetail_withUnknownRegion_throwsNotFound() {
-        when(regionRepository.findById("UNKNOWN")).thenReturn(Optional.empty());
+    void getDetail_with5DigitCode_worksDirectly() {
+        DistrictStats stats = statsOf("11110", "종로구", 2026, 1, "C", 80000L, new BigDecimal("30000000"), new BigDecimal("0.05"), new BigDecimal("0.06"), 300);
+        when(districtStatsQueryService.historyForDistrict("11110")).thenReturn(List.of(stats));
 
-        assertThatThrownBy(() -> service.getDetail("UNKNOWN"))
+        RegionDetailResponse response = service.getDetail("11110");
+
+        assertThat(response.regionCode()).isEqualTo("11110");
+        assertThat(response.regionName()).isEqualTo("종로구");
+    }
+
+    @Test
+    void getDetail_withUnknownDistrict_throwsNotFound() {
+        when(districtStatsQueryService.historyForDistrict("99999")).thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.getDetail("99999"))
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).getHttpStatus())
                 .isEqualTo(org.springframework.http.HttpStatus.NOT_FOUND);

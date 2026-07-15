@@ -26,6 +26,10 @@ public class DistrictStatsQueryService {
         return districtStatsRepository.findByYearAndQuarter(year, quarter);
     }
 
+    public List<DistrictStats> historyForDistrict(String districtCode) {
+        return districtStatsRepository.findByDistrictCodeOrderByYearAscQuarterAsc(districtCode);
+    }
+
     public String getLatestQuarterLabel() {
         return districtStatsRepository.findAll().stream()
                 .max(Comparator.comparingInt(DistrictStats::getYear).thenComparingInt(DistrictStats::getQuarter))
