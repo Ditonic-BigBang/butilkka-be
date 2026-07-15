@@ -1,0 +1,106 @@
+package bigbang.butilkka_be.region;
+
+import bigbang.butilkka_be.common.exception.AppException;
+import bigbang.butilkka_be.region.dto.MetricRankingItem;
+import bigbang.butilkka_be.region.dto.MetricRankingResponse;
+import bigbang.butilkka_be.stats.CommercialStatsQueryService;
+import bigbang.butilkka_be.stats.DistrictStats;
+import bigbang.butilkka_be.stats.DistrictStatsQueryService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+
+@Service
+@RequiredArgsConstructor
+public class MetricRankingService {
+
+    private static final Set<String> SUPPORTED_METRICS =
+            Set.of("rentRatio", "footTraffic", "vacancyRate", "closureRate", "storeCount");
+
+    private final DistrictStatsQueryService districtStatsQueryService;
+
+    public MetricRankingResponse getMetricRanking(String metric, String order, String quarterParam) {
+        validateMetric(metric);
+        validateOrder(order);
+
+        List<DistrictStats> statsList;
+        String quarterLabel;
+
+        if (quarterParam == null || quarterParam.isBlank()) {
+            statsList = districtStatsQueryService.latestPerDistrict();
+            quarterLabel = districtStatsQueryService.getLatestQuarterLabel();
+        } else {
+            int[] parsed = CommercialStatsQueryService.parseQuarterLabel(quarterParam)
+                    .orElseThrow(() -> AppException.badRequest("지원하지 않는 분기 형식입니다."));
+            statsList = districtStatsQueryService.forQuarter(parsed[0], parsed[1]);
+            quarterLabel = quarterParam;
+        }
+
+        Comparator<DistrictStats> comparator = getComparator(metric, order);
+        List<DistrictStats> sorted = statsList.stream()
+                .filter(s -> extractMetricValue(s, metric) != null)
+                .sorted(comparator)
+                .limit(5)
+                .toList();
+
+        List<MetricRankingItem> items = new ArrayList<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            items.add(toRankingItem(sorted.get(i), metric, i + 1));
+        }
+
+        return new MetricRankingResponse(metric, order, quarterLabel, items);
+    }
+
+    private MetricRankingItem toRankingItem(DistrictStats stats, String metric, int rank) {
+        BigDecimal value = extractMetricValue(stats, metric);
+        BigDecimal avgOpYears = "closureRate".equals(metric)
+                ? stats.getAvgOperatingYears()
+                : null;
+        return new MetricRankingItem(
+                rank,
+                stats.getDistrictCode(),
+                stats.getDistrictName(),
+                stats.getDeclineGrade(),
+                value,
+                avgOpYears
+        );
+    }
+
+    private Comparator<DistrictStats> getComparator(String metric, String order) {
+        Comparator<DistrictStats> byValue = Comparator.comparing(
+                s -> extractMetricValue(s, metric),
+                Comparator.nullsLast(Comparator.naturalOrder())
+        );
+        return "top".equals(order) ? byValue.reversed() : byValue;
+    }
+
+    private BigDecimal extractMetricValue(DistrictStats stats, String metric) {
+        return switch (metric) {
+            case "rentRatio" -> stats.getRentAmount();
+            case "footTraffic" -> stats.getFootTraffic() != null
+                    ? BigDecimal.valueOf(stats.getFootTraffic()) : null;
+            case "vacancyRate" -> stats.getVacancyRate();
+            case "closureRate" -> stats.getClosureRate();
+            case "storeCount" -> stats.getStoreCount() != null
+                    ? BigDecimal.valueOf(stats.getStoreCount()) : null;
+            default -> null;
+        };
+    }
+
+    private void validateMetric(String metric) {
+        if (!SUPPORTED_METRICS.contains(metric)) {
+            throw AppException.badRequest("지원하지 않는 지표입니다.");
+        }
+    }
+
+    private void validateOrder(String order) {
+        if (!"top".equals(order) && !"bottom".equals(order)) {
+            throw AppException.badRequest("지원하지 않는 정렬 기준입니다.");
+        }
+    }
+}

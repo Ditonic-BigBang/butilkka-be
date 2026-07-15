@@ -74,11 +74,12 @@ class FavoriteServiceTest {
     }
 
     @Test
-    void add_whenAlreadyThreeFavorites_throwsConflict() {
+    void add_whenAlreadyFourFavorites_throwsConflict() {
         UserInterestRegion existing1 = UserInterestRegion.create(1L, "A", null, 1);
         UserInterestRegion existing2 = UserInterestRegion.create(1L, "B", null, 2);
         UserInterestRegion existing3 = UserInterestRegion.create(1L, "C", null, 3);
-        when(userInterestRegionRepository.findByUserId(1L)).thenReturn(List.of(existing1, existing2, existing3));
+        UserInterestRegion existing4 = UserInterestRegion.create(1L, "D", null, 4);
+        when(userInterestRegionRepository.findByUserId(1L)).thenReturn(List.of(existing1, existing2, existing3, existing4));
 
         assertThatThrownBy(() -> favoriteService.add(1L, "1168064000"))
                 .isInstanceOf(AppException.class)

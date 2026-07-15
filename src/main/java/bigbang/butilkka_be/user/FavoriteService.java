@@ -18,7 +18,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class FavoriteService {
 
-    private static final int MAX_FAVORITES = 3;
+    private static final int MAX_FAVORITES = 4;
 
     private final UserInterestRegionRepository userInterestRegionRepository;
     private final RegionRepository regionRepository;
@@ -28,7 +28,7 @@ public class FavoriteService {
     @Transactional
     public FavoriteItem add(Long userId, String regionCode) {
         if (userInterestRegionRepository.findByUserId(userId).size() >= MAX_FAVORITES) {
-            throw AppException.conflict("관심 상권은 최대 3개까지 등록할 수 있습니다.");
+            throw AppException.conflict("최대 4개까지만 등록 가능합니다.");
         }
         if (userInterestRegionRepository.findByUserIdAndRegionCode(userId, regionCode).isPresent()) {
             throw AppException.conflict("이미 등록된 관심 상권입니다.");

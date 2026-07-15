@@ -38,6 +38,12 @@ class RegionQueryControllerTest {
     private RegionSearchService regionSearchService;
 
     @MockitoBean
+    private MetricMapService metricMapService;
+
+    @MockitoBean
+    private MetricRankingService metricRankingService;
+
+    @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
     @Test

@@ -27,6 +27,7 @@ import java.util.Map;
 public class DataLoadService {
 
     private final CommercialStatsRepository statsRepository;
+    private final DistrictStatsRepository districtStatsRepository;
 
     @Value("${app.data-load.enabled:true}")
     private boolean dataLoadEnabled;
@@ -56,6 +57,7 @@ public class DataLoadService {
             return;
         }
         loadAll();
+        loadAllDistrictStats();
     }
 
     /**
@@ -309,5 +311,227 @@ public class DataLoadService {
     private BigDecimal parseDecimal(String s) {
         try { return s == null || s.isBlank() ? null : new BigDecimal(s); }
         catch (Exception e) { return null; }
+    }
+
+    // ──────────────────────────────────────────
+    // 구별 데이터 중간 record
+    // ──────────────────────────────────────────
+    private record GuGradeData(String grade, String direction, BigDecimal compositeScore) {}
+    private record GuSalesData(String districtCode, String districtName, Integer year, Integer quarter,
+                               Long salesAmount, BigDecimal salesDelta, Long salesGap) {}
+    private record GuFlpopData(Long footTraffic, BigDecimal footTrafficDelta, Long footTrafficGap) {}
+    private record GuStoreData(Integer storeCount, BigDecimal storeCountDelta, Long storeCountGap,
+                               BigDecimal closureRate, BigDecimal closureRateDelta, Long closureRateGap) {}
+    private record GuRentData(BigDecimal rentAmount, BigDecimal rentDelta, BigDecimal rentGap) {}
+    private record GuVacancyData(BigDecimal vacancyRate, BigDecimal vacancyRateDelta, BigDecimal vacancyRateGap) {}
+
+    @Transactional
+    public void loadAllDistrictStats() {
+        if (districtStatsRepository.count() > 0) {
+            log.info("구별 데이터 이미 존재 → skip");
+            return;
+        }
+
+        log.info("구별 CSV 데이터 적재 시작");
+        List<DistrictStats> statsList = buildDistrictStats();
+        districtStatsRepository.saveAll(statsList);
+        log.info("구별 CSV 데이터 적재 완료: {}건", statsList.size());
+    }
+
+    private List<DistrictStats> buildDistrictStats() {
+        var gradeMap = readGuGrade();
+        var salesMap = readGuSales();
+        var flpopMap = readGuFlpop();
+        var storeMap = readGuStore();
+        var rentMap = readGuRent();
+        var vacancyMap = readGuVacancy();
+
+        List<DistrictStats> result = new ArrayList<>();
+
+        for (var entry : salesMap.entrySet()) {
+            String key = entry.getKey();
+            GuSalesData sales = entry.getValue();
+
+            GuGradeData grade = gradeMap.get(sales.districtCode());
+            GuFlpopData flpop = flpopMap.get(key);
+            GuStoreData store = storeMap.get(key);
+            GuRentData rent = rentMap.get(key);
+            GuVacancyData vacancy = vacancyMap.get(key);
+
+            DistrictStats stats = DistrictStats.builder()
+                    .districtCode(sales.districtCode())
+                    .districtName(sales.districtName())
+                    .year(sales.year())
+                    .quarter(sales.quarter())
+                    .salesAmount(sales.salesAmount())
+                    .salesDelta(sales.salesDelta())
+                    .salesGap(sales.salesGap())
+                    .footTraffic(flpop != null ? flpop.footTraffic() : null)
+                    .footTrafficDelta(flpop != null ? flpop.footTrafficDelta() : null)
+                    .footTrafficGap(flpop != null ? flpop.footTrafficGap() : null)
+                    .storeCount(store != null ? store.storeCount() : null)
+                    .storeCountDelta(store != null ? store.storeCountDelta() : null)
+                    .storeCountGap(store != null ? store.storeCountGap() : null)
+                    .closureRate(store != null ? store.closureRate() : null)
+                    .closureRateDelta(store != null ? store.closureRateDelta() : null)
+                    .closureRateGap(store != null ? store.closureRateGap() : null)
+                    .rentAmount(rent != null ? rent.rentAmount() : null)
+                    .rentDelta(rent != null ? rent.rentDelta() : null)
+                    .rentGap(rent != null ? rent.rentGap() : null)
+                    .vacancyRate(vacancy != null ? vacancy.vacancyRate() : null)
+                    .vacancyRateDelta(vacancy != null ? vacancy.vacancyRateDelta() : null)
+                    .vacancyRateGap(vacancy != null ? vacancy.vacancyRateGap() : null)
+                    .declineGrade(grade != null ? grade.grade() : null)
+                    .direction(grade != null ? grade.direction() : null)
+                    .compositeScore(grade != null ? grade.compositeScore() : null)
+                    .build();
+
+            result.add(stats);
+        }
+
+        return result;
+    }
+
+    private Map<String, GuGradeData> readGuGrade() {
+        var map = new HashMap<String, GuGradeData>();
+        try (Reader reader = createBomFreeReader("data/gu_grade.csv");
+             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
+
+            for (CSVRecord r : parser) {
+                String districtCode = r.get("구코드");
+                String grade = r.get("구_최종등급");
+                String direction = r.get("구방향성");
+                BigDecimal compositeScore = parseDecimal(r.get("구종합점수"));
+
+                map.put(districtCode, new GuGradeData(grade, direction, compositeScore));
+            }
+        } catch (Exception e) {
+            log.error("gu_grade CSV 읽기 실패", e);
+        }
+        return map;
+    }
+
+    private Map<String, GuSalesData> readGuSales() {
+        var map = new HashMap<String, GuSalesData>();
+        try (Reader reader = createBomFreeReader("data/sales_by_gu.csv");
+             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
+
+            for (CSVRecord r : parser) {
+                String category = r.get("카테고리");
+                if (!"분식전문점".equals(category)) continue;  // 기본 카테고리로 필터링
+
+                String districtCode = r.get("구코드");
+                String districtName = r.get("구명");
+                String quarterStr = r.get("분기코드");
+                String key = districtCode + "|" + quarterStr;
+
+                map.put(key, new GuSalesData(
+                        districtCode,
+                        districtName,
+                        parseYear(quarterStr),
+                        parseQuarter(quarterStr),
+                        parseLong(r.get("매출금액")),
+                        parseDecimal(r.get("매출_QoQ")),
+                        parseLong(r.get("매출_gap"))
+                ));
+            }
+        } catch (Exception e) {
+            log.error("sales_by_gu CSV 읽기 실패", e);
+        }
+        return map;
+    }
+
+    private Map<String, GuFlpopData> readGuFlpop() {
+        var map = new HashMap<String, GuFlpopData>();
+        try (Reader reader = createBomFreeReader("data/flpop_by_gu.csv");
+             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
+
+            for (CSVRecord r : parser) {
+                String districtCode = r.get("구코드");
+                String quarterStr = r.get("분기코드");
+                String key = districtCode + "|" + quarterStr;
+
+                map.put(key, new GuFlpopData(
+                        parseLong(r.get("총유동인구")),
+                        parseDecimal(r.get("유동인구_delta")),
+                        parseLong(r.get("유동인구_gap"))
+                ));
+            }
+        } catch (Exception e) {
+            log.error("flpop_by_gu CSV 읽기 실패", e);
+        }
+        return map;
+    }
+
+    private Map<String, GuStoreData> readGuStore() {
+        var map = new HashMap<String, GuStoreData>();
+        try (Reader reader = createBomFreeReader("data/store_by_gu.csv");
+             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
+
+            for (CSVRecord r : parser) {
+                String category = r.get("카테고리");
+                if (!"분식전문점".equals(category)) continue;
+
+                String districtCode = r.get("구코드");
+                String quarterStr = r.get("분기코드");
+                String key = districtCode + "|" + quarterStr;
+
+                map.put(key, new GuStoreData(
+                        parseInt(r.get("점포수")),
+                        parseDecimal(r.get("점포수_증감률")),
+                        parseLong(r.get("점포수_gap")),
+                        parseDecimal(r.get("폐업률")),
+                        parseDecimal(r.get("폐업률_delta")),
+                        parseLong(r.get("폐업률_gap"))
+                ));
+            }
+        } catch (Exception e) {
+            log.error("store_by_gu CSV 읽기 실패", e);
+        }
+        return map;
+    }
+
+    private Map<String, GuRentData> readGuRent() {
+        var map = new HashMap<String, GuRentData>();
+        try (Reader reader = createBomFreeReader("data/rent_by_gu_full.csv");
+             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
+
+            for (CSVRecord r : parser) {
+                String districtCode = r.get("구코드");
+                String quarterStr = r.get("분기코드");
+                String key = districtCode + "|" + quarterStr;
+
+                map.put(key, new GuRentData(
+                        parseDecimal(r.get("임대료")),
+                        parseDecimal(r.get("임대료_delta")),
+                        parseDecimal(r.get("임대료_gap"))
+                ));
+            }
+        } catch (Exception e) {
+            log.error("rent_by_gu_full CSV 읽기 실패", e);
+        }
+        return map;
+    }
+
+    private Map<String, GuVacancyData> readGuVacancy() {
+        var map = new HashMap<String, GuVacancyData>();
+        try (Reader reader = createBomFreeReader("data/vacancy_by_gu_full.csv");
+             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
+
+            for (CSVRecord r : parser) {
+                String districtCode = r.get("구코드");
+                String quarterStr = r.get("분기코드");
+                String key = districtCode + "|" + quarterStr;
+
+                map.put(key, new GuVacancyData(
+                        parseDecimal(r.get("공실률")),
+                        parseDecimal(r.get("공실률_delta")),
+                        parseDecimal(r.get("공실률_gap"))
+                ));
+            }
+        } catch (Exception e) {
+            log.error("vacancy_by_gu_full CSV 읽기 실패", e);
+        }
+        return map;
     }
 }
