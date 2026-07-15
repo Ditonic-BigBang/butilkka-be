@@ -316,7 +316,8 @@ public class DataLoadService {
     // ──────────────────────────────────────────
     // 구별 데이터 중간 record
     // ──────────────────────────────────────────
-    private record GuGradeData(String grade, String direction, BigDecimal compositeScore) {}
+    private record GuGradeData(Integer rank) {}  // gu_grade.csv - 최신 순위만
+    private record GuGradeTimeseriesData(String grade, String direction, BigDecimal compositeScore) {}  // gu_grade_timeseries.csv - 분기별
     private record GuSalesData(String districtCode, String districtName, Integer year, Integer quarter,
                                Long salesAmount, BigDecimal salesDelta, Long salesGap) {}
     private record GuFlpopData(Long footTraffic, BigDecimal footTrafficDelta, Long footTrafficGap) {}
@@ -339,7 +340,8 @@ public class DataLoadService {
     }
 
     private List<DistrictStats> buildDistrictStats() {
-        var gradeMap = readGuGrade();
+        var rankMap = readGuGrade();                    // 구코드 → 순위
+        var gradeTimeseriesMap = readGuGradeTimeseries(); // 구코드|분기 → 등급/방향/점수
         var salesMap = readGuSales();
         var flpopMap = readGuFlpop();
         var storeMap = readGuStore();
@@ -352,7 +354,8 @@ public class DataLoadService {
             String key = entry.getKey();
             GuSalesData sales = entry.getValue();
 
-            GuGradeData grade = gradeMap.get(sales.districtCode());
+            GuGradeData rankData = rankMap.get(sales.districtCode());
+            GuGradeTimeseriesData gradeTs = gradeTimeseriesMap.get(key);
             GuFlpopData flpop = flpopMap.get(key);
             GuStoreData store = storeMap.get(key);
             GuRentData rent = rentMap.get(key);
@@ -381,9 +384,10 @@ public class DataLoadService {
                     .vacancyRate(vacancy != null ? vacancy.vacancyRate() : null)
                     .vacancyRateDelta(vacancy != null ? vacancy.vacancyRateDelta() : null)
                     .vacancyRateGap(vacancy != null ? vacancy.vacancyRateGap() : null)
-                    .declineGrade(grade != null ? grade.grade() : null)
-                    .direction(grade != null ? grade.direction() : null)
-                    .compositeScore(grade != null ? grade.compositeScore() : null)
+                    .declineGrade(gradeTs != null ? gradeTs.grade() : null)
+                    .direction(gradeTs != null ? gradeTs.direction() : null)
+                    .compositeScore(gradeTs != null ? gradeTs.compositeScore() : null)
+                    .districtRank(rankData != null ? rankData.rank() : null)
                     .build();
 
             result.add(stats);
@@ -399,14 +403,33 @@ public class DataLoadService {
 
             for (CSVRecord r : parser) {
                 String districtCode = r.get("구코드");
-                String grade = r.get("구_최종등급");
-                String direction = r.get("구방향성");
-                BigDecimal compositeScore = parseDecimal(r.get("구종합점수"));
-
-                map.put(districtCode, new GuGradeData(grade, direction, compositeScore));
+                Integer rank = parseInt(r.get("구순위"));
+                map.put(districtCode, new GuGradeData(rank));
             }
         } catch (Exception e) {
             log.error("gu_grade CSV 읽기 실패", e);
+        }
+        return map;
+    }
+
+    private Map<String, GuGradeTimeseriesData> readGuGradeTimeseries() {
+        var map = new HashMap<String, GuGradeTimeseriesData>();
+        try (Reader reader = createBomFreeReader("data/gu_grade_timeseries.csv");
+             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
+
+            for (CSVRecord r : parser) {
+                String districtCode = r.get("구코드");
+                String quarterStr = r.get("분기코드");
+                String key = districtCode + "|" + quarterStr;
+
+                String grade = r.get("구등급");
+                String direction = r.get("구방향성");
+                BigDecimal compositeScore = parseDecimal(r.get("구종합점수"));
+
+                map.put(key, new GuGradeTimeseriesData(grade, direction, compositeScore));
+            }
+        } catch (Exception e) {
+            log.error("gu_grade_timeseries CSV 읽기 실패", e);
         }
         return map;
     }

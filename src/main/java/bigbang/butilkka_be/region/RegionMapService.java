@@ -48,7 +48,8 @@ public class RegionMapService {
                 stats.getDistrictCode(),
                 stats.getDistrictName(),
                 stats.getDistrictName(),  // district field (구 기반이라 동일)
-                stats.getDeclineGrade()
+                stats.getDeclineGrade(),
+                stats.getDistrictRank()
         );
     }
 

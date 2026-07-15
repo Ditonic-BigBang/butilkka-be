@@ -50,7 +50,7 @@ class RegionQueryControllerTest {
     void getMap_returnsOk() throws Exception {
         when(regionMapService.getMap(isNull()))
                 .thenReturn(new RegionMapResponse("2026Q4", List.of(
-                        new RegionMapItem("1168064000", "역삼1동", "강남구", "A"))));
+                        new RegionMapItem("1168064000", "역삼1동", "강남구", "A", 1))));
 
         mockMvc.perform(get("/api/v1/regions/map"))
                 .andExpect(status().isOk())

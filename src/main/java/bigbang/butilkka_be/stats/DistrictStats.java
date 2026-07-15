@@ -97,6 +97,9 @@ public class DistrictStats {
     @Column(name = "avg_operating_years", precision = 5, scale = 2)
     private BigDecimal avgOperatingYears;
 
+    @Column(name = "district_rank")
+    private Integer districtRank;
+
     @Builder
     public DistrictStats(String districtCode, String districtName, Integer quarter, Integer year,
                          Long footTraffic, BigDecimal footTrafficDelta, Long footTrafficGap,
@@ -106,7 +109,7 @@ public class DistrictStats {
                          BigDecimal rentAmount, BigDecimal rentDelta, BigDecimal rentGap,
                          BigDecimal vacancyRate, BigDecimal vacancyRateDelta, BigDecimal vacancyRateGap,
                          String declineGrade, String direction, BigDecimal compositeScore,
-                         BigDecimal avgOperatingYears) {
+                         BigDecimal avgOperatingYears, Integer districtRank) {
         this.districtCode = districtCode;
         this.districtName = districtName;
         this.quarter = quarter;
@@ -133,5 +136,6 @@ public class DistrictStats {
         this.direction = direction;
         this.compositeScore = compositeScore;
         this.avgOperatingYears = avgOperatingYears;
+        this.districtRank = districtRank;
     }
 }
