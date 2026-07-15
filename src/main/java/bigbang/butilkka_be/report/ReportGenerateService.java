@@ -1,15 +1,10 @@
 package bigbang.butilkka_be.report;
 
-import bigbang.butilkka_be.category.CategoryRepository;
 import bigbang.butilkka_be.common.exception.AppException;
-import bigbang.butilkka_be.region.District;
-import bigbang.butilkka_be.region.DistrictRepository;
-import bigbang.butilkka_be.region.Region;
-import bigbang.butilkka_be.region.RegionRepository;
 import bigbang.butilkka_be.report.dto.ReportGenerateRequest;
 import bigbang.butilkka_be.report.dto.ReportGenerateResponse;
-import bigbang.butilkka_be.stats.CommercialStats;
-import bigbang.butilkka_be.stats.CommercialStatsRepository;
+import bigbang.butilkka_be.stats.DistrictStats;
+import bigbang.butilkka_be.stats.DistrictStatsQueryService;
 import bigbang.butilkka_be.user.User;
 import bigbang.butilkka_be.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,10 +23,7 @@ public class ReportGenerateService {
 
     private final AiServerClient aiServerClient;
     private final UserRepository userRepository;
-    private final RegionRepository regionRepository;
-    private final DistrictRepository districtRepository;
-    private final CategoryRepository categoryRepository;
-    private final CommercialStatsRepository commercialStatsRepository;
+    private final DistrictStatsQueryService districtStatsQueryService;
     private final ReportRepository reportRepository;
     private final ReportCauseRepository reportCauseRepository;
     private final ReportSignalRepository reportSignalRepository;
@@ -48,27 +40,24 @@ public class ReportGenerateService {
             throw AppException.badRequest("등록된 가게 정보가 없습니다.");
         }
 
-        String regionCode = user.getStoreRegion();
-        Region region = regionRepository.findById(regionCode)
-                .orElseThrow(() -> AppException.notFound("존재하지 않는 상권코드입니다."));
-        District district = districtRepository.findById(region.getDistrictCode())
-                .orElseThrow(() -> AppException.notFound("존재하지 않는 자치구코드입니다."));
+        // 10자리 행정동 코드에서 앞 5자리 구코드 추출
+        String districtCode = user.getStoreRegion().substring(0, 5);
 
         // 현재 분기 계산
         LocalDate now = LocalDate.now();
         int year = now.getYear();
         int quarter = (now.getMonthValue() - 1) / 3 + 1;
 
-        // CommercialStats에서 최신 데이터 조회
-        List<CommercialStats> history = commercialStatsRepository.findByRegionCodeOrderByYearAscQuarterAsc(regionCode);
+        // DistrictStats에서 최신 데이터 조회
+        List<DistrictStats> history = districtStatsQueryService.historyForDistrict(districtCode);
         if (history.isEmpty()) {
             throw AppException.notFound("해당 지역의 상권 통계가 없습니다.");
         }
 
-        CommercialStats latest = history.get(history.size() - 1);
+        DistrictStats latest = history.get(history.size() - 1);
         String grade = latest.getDeclineGrade() != null ? latest.getDeclineGrade() : "C";
         int score = gradeToScore(grade);
-        String declineType = determineDeclineType(history);
+        String declineType = latest.getDirection() != null ? latest.getDirection() : "정체";
 
         // AI 요청 생성
         ReportGenerateRequest.ReportContext context = new ReportGenerateRequest.ReportContext(
@@ -77,14 +66,14 @@ public class ReportGenerateService {
                 toDouble(latest.getStoreCountDelta()),
                 toDouble(latest.getClosureRate()),
                 toDouble(latest.getVacancyRate()),
-                latest.getTopAgeGroup(),
-                latest.getTopGender()
+                null,  // topAgeGroup - 구 기반에는 없음
+                null   // topGender - 구 기반에는 없음
         );
 
         // 8분기 이력 (선택)
         ReportGenerateRequest.QuarterlyHistory quarterlyHistory = null;
         if (history.size() >= 8) {
-            List<CommercialStats> last8 = history.subList(history.size() - 8, history.size());
+            List<DistrictStats> last8 = history.subList(history.size() - 8, history.size());
             quarterlyHistory = new ReportGenerateRequest.QuarterlyHistory(
                     last8.stream().map(s -> toDouble(s.getSalesDelta())).toList(),
                     last8.stream().map(s -> s.getFootTraffic() != null ? s.getFootTraffic().doubleValue() : 0.0).toList(),
@@ -94,17 +83,17 @@ public class ReportGenerateService {
         }
 
         ReportGenerateRequest request = new ReportGenerateRequest(
-                regionCode, region.getRegionName(), district.getDistrictName(),
+                districtCode, latest.getDistrictName(), latest.getDistrictName(),
                 year, quarter, grade, score, declineType, context, quarterlyHistory
         );
 
-        log.info("리포트 생성 요청 - region: {}, year: {}, quarter: {}", regionCode, year, quarter);
+        log.info("리포트 생성 요청 - district: {}, year: {}, quarter: {}", districtCode, year, quarter);
 
         // AI 서버 호출
         ReportGenerateResponse aiResponse = aiServerClient.generateReport(request);
 
-        // Report 저장
-        Report report = Report.create(userId, regionCode, user.getCategoryCode(), year, quarter, grade, score, declineType);
+        // Report 저장 (regionCode 대신 districtCode 사용)
+        Report report = Report.create(userId, districtCode, user.getCategoryCode(), year, quarter, grade, score, declineType);
         report.applyAiResponse(
                 aiResponse.summary(),
                 aiResponse.aiOutlook(),
@@ -166,26 +155,6 @@ public class ReportGenerateService {
             case "E" -> 10;
             default -> 50;
         };
-    }
-
-    private String determineDeclineType(List<CommercialStats> history) {
-        if (history.size() < 2) return "정체";
-
-        CommercialStats latest = history.get(history.size() - 1);
-        CommercialStats prev = history.get(history.size() - 2);
-
-        BigDecimal latestDelta = latest.getSalesDelta();
-        BigDecimal prevDelta = prev.getSalesDelta();
-
-        if (latestDelta == null) return "정체";
-
-        if (latestDelta.compareTo(BigDecimal.ZERO) > 0) {
-            return "성장";
-        } else if (latestDelta.compareTo(new BigDecimal("-0.05")) < 0) {
-            return "쇠퇴";
-        } else {
-            return "정체";
-        }
     }
 
     private Double toDouble(BigDecimal value) {

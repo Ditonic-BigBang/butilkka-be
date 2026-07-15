@@ -4,12 +4,8 @@ import bigbang.butilkka_be.category.Category;
 import bigbang.butilkka_be.category.CategoryRepository;
 import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.dashboard.dto.DashboardResponse;
-import bigbang.butilkka_be.region.District;
-import bigbang.butilkka_be.region.DistrictRepository;
-import bigbang.butilkka_be.region.Region;
-import bigbang.butilkka_be.region.RegionRepository;
-import bigbang.butilkka_be.stats.CommercialStats;
-import bigbang.butilkka_be.stats.CommercialStatsQueryService;
+import bigbang.butilkka_be.stats.DistrictStats;
+import bigbang.butilkka_be.stats.DistrictStatsQueryService;
 import bigbang.butilkka_be.user.User;
 import bigbang.butilkka_be.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +20,7 @@ import java.util.function.Function;
 public class DashboardService {
 
     private final UserRepository userRepository;
-    private final CommercialStatsQueryService commercialStatsQueryService;
-    private final RegionRepository regionRepository;
-    private final DistrictRepository districtRepository;
+    private final DistrictStatsQueryService districtStatsQueryService;
     private final CategoryRepository categoryRepository;
 
     public DashboardResponse getDashboard(Long userId) {
@@ -37,37 +31,38 @@ public class DashboardService {
             throw AppException.notFound("등록된 가게 정보가 없습니다.");
         }
 
-        List<CommercialStats> history = commercialStatsQueryService.historyForRegion(user.getStoreRegion());
+        // 10자리 행정동 코드에서 앞 5자리 구코드 추출
+        String districtCode = user.getStoreRegion().substring(0, 5);
+
+        List<DistrictStats> history = districtStatsQueryService.historyForDistrict(districtCode);
         if (history.isEmpty()) {
             throw AppException.notFound("등록된 가게 정보가 없습니다.");
         }
 
-        CommercialStats latest = history.get(history.size() - 1);
+        DistrictStats latest = history.get(history.size() - 1);
         String previousGrade = history.size() >= 2
                 ? history.get(history.size() - 2).getDeclineGrade()
                 : null;
 
-        DashboardResponse.StoreInfo store = buildStore(user);
+        DashboardResponse.StoreInfo store = buildStore(user, latest);
         DashboardResponse.Grade grade = new DashboardResponse.Grade(
                 latest.getDeclineGrade(), previousGrade, gaugeValueOf(latest.getDeclineGrade()));
 
         DashboardResponse.Metrics metrics = new DashboardResponse.Metrics(
-                trendOf(history, latest.getFootTrafficDelta(), latest.getFootTrafficGap(), CommercialStats::getFootTraffic, "만명"),
-                trendOf(history, latest.getStoreCountDelta(), latest.getStoreCountGap(), CommercialStats::getStoreCount, "개"),
-                rateTrendOf(history, latest.getClosureRateDelta(), latest.getClosureRateGap(), CommercialStats::getClosureRate, "%p"));
+                trendOf(history, latest.getFootTrafficDelta(), latest.getFootTrafficGap(), DistrictStats::getFootTraffic, "만명"),
+                trendOf(history, latest.getStoreCountDelta(), latest.getStoreCountGap(), DistrictStats::getStoreCount, "개"),
+                rateTrendOf(history, latest.getClosureRateDelta(), latest.getClosureRateGap(), DistrictStats::getClosureRate, "%p"));
 
-        return new DashboardResponse(store, grade, latest.getBriefing(), metrics);
+        // briefing이 DistrictStats에 없으므로 null 처리
+        return new DashboardResponse(store, grade, null, metrics);
     }
 
-    private DashboardResponse.StoreInfo buildStore(User user) {
-        Region region = regionRepository.findById(user.getStoreRegion())
-                .orElseThrow(() -> AppException.notFound("존재하지 않는 상권코드입니다."));
-        District district = districtRepository.findById(region.getDistrictCode())
-                .orElseThrow(() -> AppException.notFound("존재하지 않는 자치구코드입니다."));
+    private DashboardResponse.StoreInfo buildStore(User user, DistrictStats stats) {
         Category category = categoryRepository.findById(user.getCategoryCode())
                 .orElseThrow(() -> AppException.notFound("존재하지 않는 업종코드입니다."));
+        // 구 기반: districtCode, districtName 사용
         return new DashboardResponse.StoreInfo(
-                region.getRegionCode(), region.getRegionName(), category.getCategoryName(), district.getDistrictName());
+                stats.getDistrictCode(), stats.getDistrictName(), category.getCategoryName(), stats.getDistrictName());
     }
 
     private int gaugeValueOf(String grade) {
@@ -85,8 +80,8 @@ public class DashboardService {
     }
 
     private DashboardResponse.MetricTrend trendOf(
-            List<CommercialStats> history, BigDecimal delta, Long gap,
-            Function<CommercialStats, Number> valueExtractor, String unit) {
+            List<DistrictStats> history, BigDecimal delta, Long gap,
+            Function<DistrictStats, Number> valueExtractor, String unit) {
         String direction = (delta != null && delta.signum() < 0) ? "DOWN" : "UP";
         Double deltaAbs = delta == null ? null : Math.round(Math.abs(delta.doubleValue() * 100) * 100) / 100.0;
         Long gapAbs = gap == null ? null : Math.abs(gap);
@@ -117,8 +112,8 @@ public class DashboardService {
     }
 
     private DashboardResponse.MetricTrend rateTrendOf(
-            List<CommercialStats> history, BigDecimal delta, Long gap,
-            Function<CommercialStats, Number> valueExtractor, String unit) {
+            List<DistrictStats> history, BigDecimal delta, Long gap,
+            Function<DistrictStats, Number> valueExtractor, String unit) {
         String direction = (delta != null && delta.signum() < 0) ? "DOWN" : "UP";
         Double deltaAbs = delta == null ? null : Math.round(Math.abs(delta.doubleValue() * 100) * 100) / 100.0;
         Long gapAbs = gap == null ? null : Math.abs(gap);

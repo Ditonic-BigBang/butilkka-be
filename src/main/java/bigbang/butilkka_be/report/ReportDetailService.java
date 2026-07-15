@@ -5,8 +5,6 @@ import bigbang.butilkka_be.category.CategoryRepository;
 import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.region.District;
 import bigbang.butilkka_be.region.DistrictRepository;
-import bigbang.butilkka_be.region.Region;
-import bigbang.butilkka_be.region.RegionRepository;
 import bigbang.butilkka_be.report.dto.ReportDetailResponse;
 import bigbang.butilkka_be.user.User;
 import bigbang.butilkka_be.user.UserRepository;
@@ -26,7 +24,6 @@ public class ReportDetailService {
     private final ReportSignalRepository reportSignalRepository;
     private final ReportSimilarCaseRepository reportSimilarCaseRepository;
     private final ReportAlternativeRegionRepository reportAlternativeRegionRepository;
-    private final RegionRepository regionRepository;
     private final DistrictRepository districtRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
@@ -41,9 +38,12 @@ public class ReportDetailService {
             throw AppException.badRequest("등록된 가게 정보가 없습니다.");
         }
 
-        // 현재 대표 위치(storeRegion)에 해당하는 리포트만 조회
+        // 10자리 행정동 코드에서 앞 5자리 구코드 추출
+        String districtCode = currentRegion.substring(0, 5);
+
+        // 현재 대표 위치(구코드)에 해당하는 리포트만 조회
         Report latest = reportRepository.findByUserId(userId).stream()
-                .filter(r -> currentRegion.equals(r.getRegionCode()))
+                .filter(r -> districtCode.equals(r.getRegionCode()))
                 .max(Comparator.comparingInt(Report::getYear).thenComparingInt(Report::getQuarter))
                 .orElseGet(() -> reportGenerateService.generateAndSave(userId));
         return buildDetail(latest);
@@ -57,14 +57,16 @@ public class ReportDetailService {
     }
 
     private ReportDetailResponse buildDetail(Report report) {
-        Region region = regionRepository.findById(report.getRegionCode())
-                .orElseThrow(() -> AppException.notFound("존재하지 않는 상권코드입니다."));
-        District district = districtRepository.findById(region.getDistrictCode())
-                .orElseThrow(() -> AppException.notFound("존재하지 않는 자치구코드입니다."));
+        // report.getRegionCode()는 이제 구코드(5자리)
+        String districtCode = report.getRegionCode();
+        District district = districtRepository.findById(districtCode)
+                .orElse(null);
+        String districtName = district != null ? district.getDistrictName() : "알 수 없음";
+
         String categoryName = report.getCategoryCode() == null ? null
                 : categoryRepository.findById(report.getCategoryCode())
                         .map(Category::getCategoryName)
-                        .orElseThrow(() -> AppException.notFound("존재하지 않는 업종코드입니다."));
+                        .orElse(null);
 
         List<ReportDetailResponse.Cause> causes = reportCauseRepository.findByReportId(report.getReportId()).stream()
                 .map(c -> new ReportDetailResponse.Cause(c.getTitle(), c.getLevel(), c.getDescription()))
@@ -90,9 +92,9 @@ public class ReportDetailService {
 
         return new ReportDetailResponse(
                 report.getReportId(),
-                report.getRegionCode(),
-                district.getDistrictName(),
-                region.getRegionName(),
+                districtCode,        // regionCode (구코드)
+                districtName,        // district (구명)
+                districtName,        // regionName (구 기반이라 동일)
                 categoryName,
                 report.getYear() + "Q" + report.getQuarter(),
                 report.getGrade(),
@@ -111,11 +113,12 @@ public class ReportDetailService {
     }
 
     private ReportDetailResponse.SimilarCasePreview toSimilarCasePreview(ReportSimilarCase c) {
-        // AI가 보내준 regionName 우선 사용, 없으면 DB 조회 fallback
+        // AI가 보내준 regionName 우선 사용
         String regionName = c.getRegionName();
         if (regionName == null || regionName.isBlank()) {
-            regionName = regionRepository.findById(c.getRegionCode())
-                    .map(Region::getRegionName)
+            // fallback: 구코드로 조회
+            regionName = districtRepository.findById(c.getRegionCode())
+                    .map(District::getDistrictName)
                     .orElse("알 수 없음");
         }
         return new ReportDetailResponse.SimilarCasePreview(
@@ -128,8 +131,10 @@ public class ReportDetailService {
     }
 
     private ReportDetailResponse.AlternativeRegion toAlternativeRegion(ReportAlternativeRegion a, int rank) {
-        Region region = regionRepository.findById(a.getRegionCode())
-                .orElseThrow(() -> AppException.notFound("존재하지 않는 상권코드입니다."));
-        return new ReportDetailResponse.AlternativeRegion(rank, a.getRegionCode(), region.getRegionName(), a.getReason(), a.getStat());
+        // AI가 보내준 코드로 구명 조회
+        String regionName = districtRepository.findById(a.getRegionCode())
+                .map(District::getDistrictName)
+                .orElse("알 수 없음");
+        return new ReportDetailResponse.AlternativeRegion(rank, a.getRegionCode(), regionName, a.getReason(), a.getStat());
     }
 }
