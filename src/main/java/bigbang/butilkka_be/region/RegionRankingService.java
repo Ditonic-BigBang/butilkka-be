@@ -58,8 +58,16 @@ public class RegionRankingService {
     }
 
     private RegionRankingItem toRankingItem(DistrictStats stats, int rank) {
-        // DistrictStats에 이미 districtName이 있으므로 별도 조회 불필요
-        String direction = stats.getDirection() != null ? stats.getDirection() : "FLAT";
+        // direction 값을 FE 기대 형식으로 변환 (성장→UP, 쇠퇴→DOWN, 유지/정체→FLAT)
+        String rawDirection = stats.getDirection();
+        String direction;
+        if ("성장".equals(rawDirection)) {
+            direction = "UP";
+        } else if ("쇠퇴".equals(rawDirection)) {
+            direction = "DOWN";
+        } else {
+            direction = "FLAT";
+        }
         return new RegionRankingItem(rank, stats.getDistrictCode(), stats.getDistrictName(), stats.getDeclineGrade(), direction);
     }
 

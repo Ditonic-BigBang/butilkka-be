@@ -57,7 +57,7 @@ class RegionRankingServiceTest {
         assertThat(response.regions().get(0).regionCode()).isEqualTo("11110");
         assertThat(response.regions().get(0).regionName()).isEqualTo("종로구");
         assertThat(response.regions().get(0).rank()).isEqualTo(1);
-        assertThat(response.regions().get(0).direction()).isEqualTo("성장");
+        assertThat(response.regions().get(0).direction()).isEqualTo("UP");
     }
 
     @Test
@@ -91,7 +91,7 @@ class RegionRankingServiceTest {
 
         assertThat(response.quarter()).isEqualTo("2025Q3");
         assertThat(response.regions()).hasSize(1);
-        assertThat(response.regions().get(0).direction()).isEqualTo("유지");
+        assertThat(response.regions().get(0).direction()).isEqualTo("FLAT");
     }
 
     @Test
