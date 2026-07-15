@@ -33,7 +33,7 @@ class RegionRankingServiceTest {
         service = new RegionRankingService(districtStatsQueryService);
     }
 
-    private static DistrictStats statsOf(String districtCode, String districtName, String grade, String direction, int year, int quarter) {
+    private static DistrictStats statsOf(String districtCode, String districtName, String grade, String direction, int year, int quarter, int rank) {
         DistrictStats stats = mock(DistrictStats.class);
         when(stats.getDistrictCode()).thenReturn(districtCode);
         when(stats.getDistrictName()).thenReturn(districtName);
@@ -41,13 +41,14 @@ class RegionRankingServiceTest {
         when(stats.getDirection()).thenReturn(direction);
         when(stats.getYear()).thenReturn(year);
         when(stats.getQuarter()).thenReturn(quarter);
+        when(stats.getDistrictRank()).thenReturn(rank);
         return stats;
     }
 
     @Test
-    void getRanking_withOrderTop_sortsBestGradeFirst() {
-        DistrictStats a = statsOf("11110", "종로구", "A", "성장", 2026, 4);
-        DistrictStats b = statsOf("11140", "중구", "E", "쇠퇴", 2026, 4);
+    void getRanking_withOrderTop_sortsByRankAscending() {
+        DistrictStats a = statsOf("11110", "종로구", "A", "성장", 2026, 4, 1);
+        DistrictStats b = statsOf("11140", "중구", "E", "쇠퇴", 2026, 4, 2);
         when(districtStatsQueryService.latestPerDistrict()).thenReturn(List.of(b, a));
         when(districtStatsQueryService.getLatestQuarterLabel()).thenReturn("2026Q4");
 
@@ -60,9 +61,9 @@ class RegionRankingServiceTest {
     }
 
     @Test
-    void getRanking_withOrderBottom_sortsWorstGradeFirst() {
-        DistrictStats a = statsOf("11110", "종로구", "A", "성장", 2026, 4);
-        DistrictStats b = statsOf("11140", "중구", "E", "쇠퇴", 2026, 4);
+    void getRanking_withOrderBottom_sortsByRankDescending() {
+        DistrictStats a = statsOf("11110", "종로구", "A", "성장", 2026, 4, 1);
+        DistrictStats b = statsOf("11140", "중구", "E", "쇠퇴", 2026, 4, 25);
         when(districtStatsQueryService.latestPerDistrict()).thenReturn(List.of(a, b));
         when(districtStatsQueryService.getLatestQuarterLabel()).thenReturn("2026Q4");
 
@@ -70,7 +71,7 @@ class RegionRankingServiceTest {
 
         assertThat(response.regions().get(0).regionCode()).isEqualTo("11140");
         assertThat(response.regions().get(0).regionName()).isEqualTo("중구");
-        assertThat(response.regions().get(0).rank()).isEqualTo(1);
+        assertThat(response.regions().get(0).rank()).isEqualTo(25);
     }
 
     @Test
@@ -83,7 +84,7 @@ class RegionRankingServiceTest {
 
     @Test
     void getRanking_withQuarterParam_usesSpecificQuarter() {
-        DistrictStats stats = statsOf("11110", "종로구", "B", "유지", 2025, 3);
+        DistrictStats stats = statsOf("11110", "종로구", "B", "유지", 2025, 3, 5);
         when(districtStatsQueryService.forQuarter(2025, 3)).thenReturn(List.of(stats));
 
         RegionRankingResponse response = service.getRanking("top", "2025Q3");
@@ -95,7 +96,7 @@ class RegionRankingServiceTest {
 
     @Test
     void getRanking_withNullDirection_returnsFLAT() {
-        DistrictStats stats = statsOf("11110", "종로구", "C", null, 2026, 4);
+        DistrictStats stats = statsOf("11110", "종로구", "C", null, 2026, 4, 10);
         when(districtStatsQueryService.latestPerDistrict()).thenReturn(List.of(stats));
         when(districtStatsQueryService.getLatestQuarterLabel()).thenReturn("2026Q4");
 

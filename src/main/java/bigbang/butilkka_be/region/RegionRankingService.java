@@ -18,7 +18,6 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class RegionRankingService {
 
-    private static final String GRADE_ORDER = "ABCDE";
     private static final Pattern QUARTER_PATTERN = Pattern.compile("(\\d{4})Q([1-4])");
 
     private final DistrictStatsQueryService districtStatsQueryService;
@@ -40,23 +39,20 @@ public class RegionRankingService {
             quarterLabel = quarterParam;
         }
 
-        Comparator<DistrictStats> byGrade = Comparator.comparingInt(s -> {
-            String grade = s.getDeclineGrade();
-            int idx = grade == null ? -1 : GRADE_ORDER.indexOf(grade);
-            return idx < 0 ? Integer.MAX_VALUE : idx;  // null이나 알 수 없는 등급은 최하위로
-        });
+        // CSV 구순위(districtRank) 기준으로 정렬
+        Comparator<DistrictStats> byRank = Comparator.comparingInt(s ->
+                s.getDistrictRank() != null ? s.getDistrictRank() : Integer.MAX_VALUE);
         if ("bottom".equals(order)) {
-            byGrade = byGrade.reversed();
+            byRank = byRank.reversed();
         }
 
         List<DistrictStats> sorted = statsList.stream()
-                .filter(s -> s.getDeclineGrade() != null)  // 등급 없는 데이터 제외
-                .sorted(byGrade).limit(5).toList();
+                .filter(s -> s.getDistrictRank() != null)  // 순위 없는 데이터 제외
+                .sorted(byRank).limit(5).toList();
 
-        List<RegionRankingItem> items = new java.util.ArrayList<>();
-        for (int i = 0; i < sorted.size(); i++) {
-            items.add(toRankingItem(sorted.get(i), i + 1));
-        }
+        List<RegionRankingItem> items = sorted.stream()
+                .map(s -> toRankingItem(s, s.getDistrictRank()))
+                .toList();
 
         return new RegionRankingResponse(order, quarterLabel, items);
     }
