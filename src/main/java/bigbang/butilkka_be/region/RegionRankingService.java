@@ -37,12 +37,18 @@ public class RegionRankingService {
             quarterLabel = quarterParam;
         }
 
-        Comparator<CommercialStats> byGrade = Comparator.comparingInt(s -> GRADE_ORDER.indexOf(s.getDeclineGrade()));
+        Comparator<CommercialStats> byGrade = Comparator.comparingInt(s -> {
+            String grade = s.getDeclineGrade();
+            int idx = grade == null ? -1 : GRADE_ORDER.indexOf(grade);
+            return idx < 0 ? Integer.MAX_VALUE : idx;  // null이나 알 수 없는 등급은 최하위로
+        });
         if ("bottom".equals(order)) {
             byGrade = byGrade.reversed();
         }
 
-        List<CommercialStats> sorted = statsList.stream().sorted(byGrade).limit(5).toList();
+        List<CommercialStats> sorted = statsList.stream()
+                .filter(s -> s.getDeclineGrade() != null)  // 등급 없는 데이터 제외
+                .sorted(byGrade).limit(5).toList();
 
         List<RegionRankingItem> items = new java.util.ArrayList<>();
         for (int i = 0; i < sorted.size(); i++) {
@@ -66,8 +72,13 @@ public class RegionRankingService {
             return "FLAT";
         }
         CommercialStats previous = history.get(currentIndex - 1);
-        int currentRank = GRADE_ORDER.indexOf(current.getDeclineGrade());
-        int previousRank = GRADE_ORDER.indexOf(previous.getDeclineGrade());
+        String currentGrade = current.getDeclineGrade();
+        String previousGrade = previous.getDeclineGrade();
+        if (currentGrade == null || previousGrade == null) {
+            return "FLAT";
+        }
+        int currentRank = GRADE_ORDER.indexOf(currentGrade);
+        int previousRank = GRADE_ORDER.indexOf(previousGrade);
         if (currentRank < previousRank) {
             return "UP";
         }
