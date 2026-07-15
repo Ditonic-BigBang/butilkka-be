@@ -2,8 +2,9 @@ package bigbang.butilkka_be.region;
 
 import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.region.dto.RegionMapResponse;
-import bigbang.butilkka_be.stats.CommercialStats;
-import bigbang.butilkka_be.stats.CommercialStatsQueryService;
+import bigbang.butilkka_be.stats.DistrictStats;
+import bigbang.butilkka_be.stats.DistrictStatsQueryService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -20,46 +21,48 @@ import static org.mockito.Mockito.when;
 class RegionMapServiceTest {
 
     @Mock
-    private CommercialStatsQueryService commercialStatsQueryService;
-    @Mock
-    private RegionRepository regionRepository;
-    @Mock
-    private DistrictRepository districtRepository;
+    private DistrictStatsQueryService districtStatsQueryService;
 
     private RegionMapService service;
 
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeEach
     void setUp() {
-        service = new RegionMapService(commercialStatsQueryService, regionRepository, districtRepository);
+        service = new RegionMapService(districtStatsQueryService);
     }
 
     @Test
-    void getMap_withoutQuarter_usesLatestPerRegionAndResolvesRegionAndDistrict() {
-        CommercialStats stats = mock(CommercialStats.class);
-        when(stats.getRegionCode()).thenReturn("1168064000");
-        when(stats.getYear()).thenReturn(2026);
-        when(stats.getQuarter()).thenReturn(4);
+    void getMap_withoutQuarter_usesLatestPerDistrict() {
+        DistrictStats stats = mock(DistrictStats.class);
+        when(stats.getDistrictCode()).thenReturn("11680");
+        when(stats.getDistrictName()).thenReturn("강남구");
         when(stats.getDeclineGrade()).thenReturn("A");
-        when(commercialStatsQueryService.latestPerRegion()).thenReturn(List.of(stats));
-
-        Region region = mock(Region.class);
-        when(region.getRegionCode()).thenReturn("1168064000");
-        when(region.getRegionName()).thenReturn("역삼1동");
-        when(region.getDistrictCode()).thenReturn("11680");
-        when(regionRepository.findById("1168064000")).thenReturn(java.util.Optional.of(region));
-
-        District district = mock(District.class);
-        when(district.getDistrictName()).thenReturn("강남구");
-        when(districtRepository.findById("11680")).thenReturn(java.util.Optional.of(district));
+        when(districtStatsQueryService.latestPerDistrict()).thenReturn(List.of(stats));
+        when(districtStatsQueryService.getLatestQuarterLabel()).thenReturn("2026Q4");
 
         RegionMapResponse response = service.getMap(null);
 
         assertThat(response.quarter()).isEqualTo("2026Q4");
         assertThat(response.regions()).hasSize(1);
-        assertThat(response.regions().get(0).regionCode()).isEqualTo("1168064000");
-        assertThat(response.regions().get(0).regionName()).isEqualTo("역삼1동");
+        assertThat(response.regions().get(0).regionCode()).isEqualTo("11680");
+        assertThat(response.regions().get(0).regionName()).isEqualTo("강남구");
         assertThat(response.regions().get(0).district()).isEqualTo("강남구");
         assertThat(response.regions().get(0).grade()).isEqualTo("A");
+    }
+
+    @Test
+    void getMap_withQuarter_usesForQuarter() {
+        DistrictStats stats = mock(DistrictStats.class);
+        when(stats.getDistrictCode()).thenReturn("11110");
+        when(stats.getDistrictName()).thenReturn("종로구");
+        when(stats.getDeclineGrade()).thenReturn("C");
+        when(districtStatsQueryService.forQuarter(2025, 3)).thenReturn(List.of(stats));
+
+        RegionMapResponse response = service.getMap("2025Q3");
+
+        assertThat(response.quarter()).isEqualTo("2025Q3");
+        assertThat(response.regions()).hasSize(1);
+        assertThat(response.regions().get(0).regionCode()).isEqualTo("11110");
+        assertThat(response.regions().get(0).grade()).isEqualTo("C");
     }
 
     @Test
