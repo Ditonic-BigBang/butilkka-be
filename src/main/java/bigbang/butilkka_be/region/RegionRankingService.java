@@ -39,20 +39,41 @@ public class RegionRankingService {
             quarterLabel = quarterParam;
         }
 
-        // CSV 구순위(districtRank) 기준으로 정렬
-        Comparator<DistrictStats> byRank = Comparator.comparingInt(s ->
-                s.getDistrictRank() != null ? s.getDistrictRank() : Integer.MAX_VALUE);
-        if ("bottom".equals(order)) {
-            byRank = byRank.reversed();
+        // districtRank가 있으면 CSV 순위 기준, 없으면 등급 기준 정렬
+        boolean hasRankData = statsList.stream().anyMatch(s -> s.getDistrictRank() != null);
+
+        List<DistrictStats> sorted;
+        if (hasRankData) {
+            // CSV 구순위(districtRank) 기준 정렬
+            Comparator<DistrictStats> byRank = Comparator.comparingInt(s ->
+                    s.getDistrictRank() != null ? s.getDistrictRank() : Integer.MAX_VALUE);
+            if ("bottom".equals(order)) {
+                byRank = byRank.reversed();
+            }
+            sorted = statsList.stream()
+                    .filter(s -> s.getDistrictRank() != null)
+                    .sorted(byRank).limit(5).toList();
+        } else {
+            // fallback: 등급 기준 정렬 (E→A for top, A→E for bottom)
+            Comparator<DistrictStats> byGrade = Comparator.comparingInt(s -> {
+                String grade = s.getDeclineGrade();
+                int idx = grade == null ? -1 : "ABCDE".indexOf(grade);
+                return idx < 0 ? Integer.MAX_VALUE : idx;
+            });
+            if ("top".equals(order)) {
+                byGrade = byGrade.reversed();  // top = 위험한 순 (E먼저)
+            }
+            sorted = statsList.stream()
+                    .filter(s -> s.getDeclineGrade() != null)
+                    .sorted(byGrade).limit(5).toList();
         }
 
-        List<DistrictStats> sorted = statsList.stream()
-                .filter(s -> s.getDistrictRank() != null)  // 순위 없는 데이터 제외
-                .sorted(byRank).limit(5).toList();
-
-        List<RegionRankingItem> items = sorted.stream()
-                .map(s -> toRankingItem(s, s.getDistrictRank()))
-                .toList();
+        List<RegionRankingItem> items = new java.util.ArrayList<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            DistrictStats s = sorted.get(i);
+            int rank = s.getDistrictRank() != null ? s.getDistrictRank() : (i + 1);
+            items.add(toRankingItem(s, rank));
+        }
 
         return new RegionRankingResponse(order, quarterLabel, items);
     }

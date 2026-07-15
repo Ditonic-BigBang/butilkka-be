@@ -328,8 +328,10 @@ public class DataLoadService {
 
     @Transactional
     public void loadAllDistrictStats() {
-        if (districtStatsRepository.count() > 0) {
-            log.info("구별 데이터 이미 존재 → skip");
+        long count = districtStatsRepository.count();
+        if (count > 0) {
+            log.info("구별 데이터 이미 존재 ({}건) → districtRank 업데이트 확인", count);
+            updateDistrictRanksIfNeeded();
             return;
         }
 
@@ -337,6 +339,30 @@ public class DataLoadService {
         List<DistrictStats> statsList = buildDistrictStats();
         districtStatsRepository.saveAll(statsList);
         log.info("구별 CSV 데이터 적재 완료: {}건", statsList.size());
+    }
+
+    private void updateDistrictRanksIfNeeded() {
+        // districtRank가 NULL인 레코드가 있으면 업데이트
+        List<DistrictStats> allStats = districtStatsRepository.findAll();
+        boolean needsUpdate = allStats.stream().anyMatch(s -> s.getDistrictRank() == null);
+
+        if (!needsUpdate) {
+            log.info("districtRank 이미 설정됨 → skip");
+            return;
+        }
+
+        log.info("districtRank 업데이트 시작");
+        var rankMap = readGuGrade();
+
+        for (DistrictStats stats : allStats) {
+            GuGradeData gradeData = rankMap.get(stats.getDistrictCode());
+            if (gradeData != null && gradeData.rank() != null) {
+                stats.setDistrictRank(gradeData.rank());
+            }
+        }
+
+        districtStatsRepository.saveAll(allStats);
+        log.info("districtRank 업데이트 완료: {}건", allStats.size());
     }
 
     private List<DistrictStats> buildDistrictStats() {
