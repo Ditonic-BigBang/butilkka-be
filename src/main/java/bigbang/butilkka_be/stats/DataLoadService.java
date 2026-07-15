@@ -56,7 +56,7 @@ public class DataLoadService {
             log.info("CSV 데이터 적재 비활성화됨");
             return;
         }
-        loadAll();
+        // loadAll(); // 행정동 기반 → 구 기반으로 전환되어 비활성화
         loadAllDistrictStats();
     }
 
