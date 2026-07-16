@@ -64,7 +64,7 @@ public class MetricMapService {
                     ? BigDecimal.valueOf(stats.getSalesAmount()) : null;
             case "footTraffic" -> stats.getFootTraffic() != null
                     ? BigDecimal.valueOf(stats.getFootTraffic()) : null;
-            case "vacancyRate" -> toPercent(stats.getVacancyRate());
+            case "vacancyRate" -> stats.getVacancyRate();  // 이미 % 단위
             case "closureRate" -> toPercent(stats.getClosureRate());
             case "storeCount" -> stats.getStoreCount() != null
                     ? BigDecimal.valueOf(stats.getStoreCount()) : null;
