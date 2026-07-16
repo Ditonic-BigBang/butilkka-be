@@ -42,7 +42,7 @@ public class RegionDetailService {
                 latest.getDistrictName(),  // regionName (구 기반이므로 동일)
                 label(latest),
                 buildGradeSummary(history, latest, previous),
-                buildMetricSummary(history, s -> s.getRentAmount(), DistrictStats::getRentDelta),
+                buildMetricSummary(history, s -> s.getSalesAmount(), DistrictStats::getSalesDelta),  // 매출
                 buildMetricSummary(history, s -> s.getFootTraffic(), DistrictStats::getFootTrafficDelta),
                 buildVacancyRateSummary(history),  // 공실률은 CSV에 이미 %로 저장됨
                 buildClosureRateSummary(history, latest),

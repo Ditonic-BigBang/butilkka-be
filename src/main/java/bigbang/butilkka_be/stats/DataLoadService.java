@@ -344,18 +344,19 @@ public class DataLoadService {
     private void updateDistrictRanksIfNeeded() {
         List<DistrictStats> allStats = districtStatsRepository.findAll();
 
-        // 업데이트 필요 조건: districtRank NULL 또는 매출이 분식전문점 데이터(낮은 값)인 경우
+        // 업데이트 필요 조건 확인
         boolean needsRankUpdate = allStats.stream().anyMatch(s -> s.getDistrictRank() == null);
         boolean needsSalesUpdate = allStats.stream().anyMatch(s ->
-                s.getSalesAmount() != null && s.getSalesAmount() < 100_000_000_000L);  // 1000억 미만이면 분식전문점 데이터
+                s.getSalesAmount() == null || s.getSalesAmount() < 100_000_000_000L);  // NULL이거나 1000억 미만이면 재로드
+        boolean needsGradeUpdate = allStats.stream().anyMatch(s -> s.getDeclineGrade() == null);
 
-        if (!needsRankUpdate && !needsSalesUpdate) {
+        if (!needsRankUpdate && !needsSalesUpdate && !needsGradeUpdate) {
             log.info("데이터 이미 최신 상태 → skip");
             return;
         }
 
-        // 데이터 전체 재로드 필요 (카테고리 필터가 변경됨)
-        if (needsSalesUpdate) {
+        // 데이터 전체 재로드 필요 (카테고리 필터 변경, 등급 데이터 누락 등)
+        if (needsSalesUpdate || needsGradeUpdate) {
             log.info("매출/점포 데이터 재로드 필요 → 전체 삭제 후 재적재");
             districtStatsRepository.deleteAll();
             List<DistrictStats> newStats = buildDistrictStats();
