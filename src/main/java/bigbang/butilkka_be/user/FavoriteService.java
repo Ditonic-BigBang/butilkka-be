@@ -25,6 +25,9 @@ public class FavoriteService {
 
     @Transactional
     public FavoriteItem add(Long userId, String code) {
+        if (code == null || code.isBlank()) {
+            throw AppException.badRequest("지역 코드가 필요합니다.");
+        }
         // 10자리면 앞 5자리 추출, 5자리면 그대로 사용
         String districtCode = code.length() >= 10 ? code.substring(0, 5) : code;
 
