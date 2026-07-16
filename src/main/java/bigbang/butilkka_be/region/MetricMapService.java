@@ -60,15 +60,20 @@ public class MetricMapService {
 
     private BigDecimal extractMetricValue(DistrictStats stats, String metric) {
         return switch (metric) {
-            case "rentRatio" -> stats.getRentAmount();
+            case "rentRatio" -> stats.getSalesAmount() != null
+                    ? BigDecimal.valueOf(stats.getSalesAmount()) : null;
             case "footTraffic" -> stats.getFootTraffic() != null
                     ? BigDecimal.valueOf(stats.getFootTraffic()) : null;
-            case "vacancyRate" -> stats.getVacancyRate();
-            case "closureRate" -> stats.getClosureRate();
+            case "vacancyRate" -> toPercent(stats.getVacancyRate());
+            case "closureRate" -> toPercent(stats.getClosureRate());
             case "storeCount" -> stats.getStoreCount() != null
                     ? BigDecimal.valueOf(stats.getStoreCount()) : null;
             default -> null;
         };
+    }
+
+    private BigDecimal toPercent(BigDecimal value) {
+        return value != null ? value.multiply(BigDecimal.valueOf(100)) : null;
     }
 
     private void validateMetric(String metric) {
