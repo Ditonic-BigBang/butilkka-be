@@ -36,8 +36,8 @@ public class ReportGenerateService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> AppException.notFound("사용자를 찾을 수 없습니다."));
 
-        if (user.getStoreRegion() == null) {
-            throw AppException.badRequest("등록된 가게 정보가 없습니다.");
+        if (user.getStoreRegion() == null || user.getStoreRegion().length() < 5) {
+            throw AppException.badRequest("등록된 가게 정보가 없거나 지역 코드가 올바르지 않습니다.");
         }
 
         // 10자리 행정동 코드에서 앞 5자리 구코드 추출
