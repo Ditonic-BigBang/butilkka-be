@@ -8,4 +8,5 @@ import java.util.Optional;
 public interface UserInterestRegionRepository extends JpaRepository<UserInterestRegion, Long> {
     List<UserInterestRegion> findByUserId(Long userId);
     Optional<UserInterestRegion> findByUserIdAndRegionCode(Long userId, String regionCode);
+    Optional<UserInterestRegion> findByUserIdAndRegionCodeStartingWith(Long userId, String districtCode);
 }
