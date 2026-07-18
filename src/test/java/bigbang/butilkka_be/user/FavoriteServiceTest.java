@@ -3,6 +3,8 @@ package bigbang.butilkka_be.user;
 import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.region.District;
 import bigbang.butilkka_be.region.DistrictRepository;
+import bigbang.butilkka_be.region.Region;
+import bigbang.butilkka_be.region.RegionRepository;
 import bigbang.butilkka_be.stats.DistrictStats;
 import bigbang.butilkka_be.stats.DistrictStatsQueryService;
 import bigbang.butilkka_be.user.dto.FavoriteItem;
@@ -30,13 +32,15 @@ class FavoriteServiceTest {
     @Mock
     private DistrictRepository districtRepository;
     @Mock
+    private RegionRepository regionRepository;
+    @Mock
     private DistrictStatsQueryService districtStatsQueryService;
 
     private FavoriteService favoriteService;
 
     @BeforeEach
     void setUp() {
-        favoriteService = new FavoriteService(userInterestRegionRepository, districtRepository, districtStatsQueryService);
+        favoriteService = new FavoriteService(userInterestRegionRepository, districtRepository, regionRepository, districtStatsQueryService);
     }
 
     @Test
@@ -44,9 +48,13 @@ class FavoriteServiceTest {
         District district = mock(District.class);
         when(district.getDistrictName()).thenReturn("강남구");
 
+        Region region = mock(Region.class);
+        when(region.getRegionCode()).thenReturn("1168064000");
+
         when(userInterestRegionRepository.findByUserId(1L)).thenReturn(List.of());
-        when(userInterestRegionRepository.findByUserIdAndRegionCode(1L, "11680")).thenReturn(Optional.empty());
+        when(userInterestRegionRepository.findByUserIdAndRegionCodeStartingWith(1L, "11680")).thenReturn(Optional.empty());
         when(districtRepository.findById("11680")).thenReturn(Optional.of(district));
+        when(regionRepository.findFirstByDistrictCode("11680")).thenReturn(Optional.of(region));
 
         DistrictStats stats = mock(DistrictStats.class);
         when(stats.getDeclineGrade()).thenReturn("A");
@@ -63,7 +71,7 @@ class FavoriteServiceTest {
     @Test
     void add_withUnknownDistrict_throwsBadRequest() {
         when(userInterestRegionRepository.findByUserId(1L)).thenReturn(List.of());
-        when(userInterestRegionRepository.findByUserIdAndRegionCode(1L, "99999")).thenReturn(Optional.empty());
+        when(userInterestRegionRepository.findByUserIdAndRegionCodeStartingWith(1L, "99999")).thenReturn(Optional.empty());
         when(districtRepository.findById("99999")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> favoriteService.add(1L, "9999900000"))  // 10자리 → 앞 5자리 추출
@@ -89,8 +97,8 @@ class FavoriteServiceTest {
     @Test
     void add_whenAlreadyFavorited_throwsConflict() {
         when(userInterestRegionRepository.findByUserId(1L)).thenReturn(List.of());
-        when(userInterestRegionRepository.findByUserIdAndRegionCode(1L, "11680"))
-                .thenReturn(Optional.of(UserInterestRegion.create(1L, "11680", null, 1)));
+        when(userInterestRegionRepository.findByUserIdAndRegionCodeStartingWith(1L, "11680"))
+                .thenReturn(Optional.of(UserInterestRegion.create(1L, "1168064000", null, 1)));
 
         assertThatThrownBy(() -> favoriteService.add(1L, "1168064000"))
                 .isInstanceOf(AppException.class)
@@ -106,7 +114,8 @@ class FavoriteServiceTest {
         DistrictStats stats = mock(DistrictStats.class);
         when(stats.getDeclineGrade()).thenReturn("A");
 
-        UserInterestRegion favorite = UserInterestRegion.create(1L, "11680", "강남구", 1);
+        // DB에는 10자리로 저장되어 있음
+        UserInterestRegion favorite = UserInterestRegion.create(1L, "1168064000", "강남구", 1);
         when(userInterestRegionRepository.findByUserId(1L)).thenReturn(List.of(favorite));
         when(districtRepository.findById("11680")).thenReturn(Optional.of(district));
         when(districtStatsQueryService.historyForDistrict("11680")).thenReturn(List.of(stats));
@@ -119,8 +128,8 @@ class FavoriteServiceTest {
 
     @Test
     void remove_withRegisteredFavorite_deletesIt() {
-        UserInterestRegion favorite = UserInterestRegion.create(1L, "11680", null, 1);
-        when(userInterestRegionRepository.findByUserIdAndRegionCode(1L, "11680")).thenReturn(Optional.of(favorite));
+        UserInterestRegion favorite = UserInterestRegion.create(1L, "1168064000", null, 1);
+        when(userInterestRegionRepository.findByUserIdAndRegionCodeStartingWith(1L, "11680")).thenReturn(Optional.of(favorite));
 
         favoriteService.remove(1L, "1168064000");  // 10자리 → 앞 5자리
 
@@ -129,7 +138,7 @@ class FavoriteServiceTest {
 
     @Test
     void remove_withUnregisteredFavorite_throwsNotFound() {
-        when(userInterestRegionRepository.findByUserIdAndRegionCode(1L, "11680")).thenReturn(Optional.empty());
+        when(userInterestRegionRepository.findByUserIdAndRegionCodeStartingWith(1L, "11680")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> favoriteService.remove(1L, "1168064000"))
                 .isInstanceOf(AppException.class)
