@@ -14,7 +14,8 @@ public record ReportGenerateRequest(
         Integer score,
         @JsonProperty("decline_type") String declineType,
         ReportContext context,
-        @JsonProperty("quarterly_history") QuarterlyHistory quarterlyHistory
+        @JsonProperty("quarterly_history") QuarterlyHistory quarterlyHistory,
+        @JsonProperty("outlook_instructions") String outlookInstructions
 ) {
     public record ReportContext(
             @JsonProperty("sales_delta") Double salesDelta,

@@ -82,9 +82,12 @@ public class ReportGenerateService {
             );
         }
 
+        // AI 종합 전망 생성 시 추가 조건
+        String outlookInstructions = "1. 지역명을 반복하지 말 것 (예: '명동 명동' 금지). 2. 구체적인 수치(%, 숫자)를 포함하지 말 것.";
+
         ReportGenerateRequest request = new ReportGenerateRequest(
                 districtCode, latest.getDistrictName(), latest.getDistrictName(),
-                year, quarter, grade, score, declineType, context, quarterlyHistory
+                year, quarter, grade, score, declineType, context, quarterlyHistory, outlookInstructions
         );
 
         log.info("리포트 생성 요청 - district: {}, year: {}, quarter: {}", districtCode, year, quarter);
