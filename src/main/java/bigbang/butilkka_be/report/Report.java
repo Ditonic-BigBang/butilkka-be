@@ -63,6 +63,18 @@ public class Report {
     @Column(name = "decision_description", columnDefinition = "TEXT")
     private String decisionDescription;
 
+    @Column(name = "ai_rec_badge_type", length = 20)
+    private String aiRecBadgeType;
+
+    @Column(name = "ai_rec_title", length = 100)
+    private String aiRecTitle;
+
+    @Column(name = "ai_rec_reason_title", length = 100)
+    private String aiRecReasonTitle;
+
+    @Column(name = "ai_rec_reason_detail", columnDefinition = "TEXT")
+    private String aiRecReasonDetail;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -82,7 +94,8 @@ public class Report {
     }
 
     public void applyAiResponse(String summary, String aiOutlook, String predictedTrend, String predictedNextGrade,
-                                 String decisionRecommendation, String decisionTitle, String decisionDescription) {
+                                 String decisionRecommendation, String decisionTitle, String decisionDescription,
+                                 String aiRecBadgeType, String aiRecTitle, String aiRecReasonTitle, String aiRecReasonDetail) {
         this.summary = summary;
         this.aiOutlook = aiOutlook;
         this.predictedTrend = predictedTrend;
@@ -90,5 +103,9 @@ public class Report {
         this.decisionRecommendation = decisionRecommendation;
         this.decisionTitle = decisionTitle;
         this.decisionDescription = decisionDescription;
+        this.aiRecBadgeType = aiRecBadgeType;
+        this.aiRecTitle = aiRecTitle;
+        this.aiRecReasonTitle = aiRecReasonTitle;
+        this.aiRecReasonDetail = aiRecReasonDetail;
     }
 }

@@ -20,7 +20,8 @@ public record ReportDetailResponse(
         List<Signal> leadingSignals,
         List<SimilarCasePreview> similarCases,
         Decision decision,
-        List<AlternativeRegion> alternativeRegions
+        List<AlternativeRegion> alternativeRegions,
+        AiRecommendation aiRecommendation
 ) {
     public record Cause(String title, String level, String description) {}
 
@@ -32,5 +33,21 @@ public record ReportDetailResponse(
 
     public record Decision(String recommendation, String title, String description) {}
 
-    public record AlternativeRegion(int rank, String regionCode, String regionName, String reason, String stat) {}
+    public record AlternativeRegion(
+            int rank,
+            String regionCode,
+            String regionName,
+            String aiMessage,
+            Integer storeCount,
+            Long floatingPopulation,
+            Double vacancy,
+            String baseDate
+    ) {}
+
+    public record AiRecommendation(
+            String badgeType,
+            String title,
+            String reasonTitle,
+            String reasonDetail
+    ) {}
 }

@@ -21,18 +21,18 @@ public class ReportAlternativeRegion {
     @Column(name = "region_code", nullable = false, length = 20)
     private String regionCode;
 
-    @Column(length = 255)
-    private String reason;
+    @Column(name = "rank_order", nullable = false)
+    private Integer rankOrder;
 
-    @Column(nullable = false, length = 50)
-    private String stat;
+    @Column(name = "ai_message", columnDefinition = "TEXT")
+    private String aiMessage;
 
-    public static ReportAlternativeRegion create(Long reportId, String regionCode, String reason, String stat) {
+    public static ReportAlternativeRegion create(Long reportId, String regionCode, int rankOrder, String aiMessage) {
         ReportAlternativeRegion r = new ReportAlternativeRegion();
         r.reportId = reportId;
         r.regionCode = regionCode;
-        r.reason = reason;
-        r.stat = stat;
+        r.rankOrder = rankOrder;
+        r.aiMessage = aiMessage;
         return r;
     }
 }

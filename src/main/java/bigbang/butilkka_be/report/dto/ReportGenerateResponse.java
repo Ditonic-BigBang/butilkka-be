@@ -15,6 +15,7 @@ public record ReportGenerateResponse(
         @JsonProperty("decision_reasons") DecisionReasons decisionReasons,
         @JsonProperty("similar_cases") List<AiSimilarCase> similarCases,
         @JsonProperty("alternative_regions") List<AiAlternativeRegion> alternativeRegions,
+        @JsonProperty("ai_recommendation") AiRecommendation aiRecommendation,
         @JsonProperty("predicted_trend") String predictedTrend,
         @JsonProperty("predicted_next_grade") String predictedNextGrade
 ) {
@@ -49,8 +50,16 @@ public record ReportGenerateResponse(
     ) {}
 
     public record AiAlternativeRegion(
+            int rank,
             @JsonProperty("region_code") String regionCode,
-            String reason,
-            String stat
+            @JsonProperty("dong_name") String dongName,
+            @JsonProperty("ai_message") String aiMessage
+    ) {}
+
+    public record AiRecommendation(
+            @JsonProperty("badge_type") String badgeType,
+            String title,
+            @JsonProperty("reason_title") String reasonTitle,
+            @JsonProperty("reason_detail") String reasonDetail
     ) {}
 }

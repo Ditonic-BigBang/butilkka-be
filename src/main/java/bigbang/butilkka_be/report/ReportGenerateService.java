@@ -94,6 +94,13 @@ public class ReportGenerateService {
 
         // Report 저장 (regionCode 대신 districtCode 사용)
         Report report = Report.create(userId, districtCode, user.getCategoryCode(), year, quarter, grade, score, declineType);
+        // AI 추천 카드 데이터 추출
+        var aiRec = aiResponse.aiRecommendation();
+        String aiRecBadgeType = aiRec != null ? aiRec.badgeType() : "AI 추천";
+        String aiRecTitle = aiRec != null ? aiRec.title() : null;
+        String aiRecReasonTitle = aiRec != null ? aiRec.reasonTitle() : null;
+        String aiRecReasonDetail = aiRec != null ? aiRec.reasonDetail() : null;
+
         report.applyAiResponse(
                 aiResponse.summary(),
                 aiResponse.aiOutlook(),
@@ -101,7 +108,11 @@ public class ReportGenerateService {
                 aiResponse.predictedNextGrade(),
                 aiResponse.decisionRecommendation(),
                 aiResponse.decisionTitle(),
-                aiResponse.decisionDescription()
+                aiResponse.decisionDescription(),
+                aiRecBadgeType,
+                aiRecTitle,
+                aiRecReasonTitle,
+                aiRecReasonDetail
         );
         reportRepository.save(report);
 
@@ -128,7 +139,7 @@ public class ReportGenerateService {
         // Alternative Regions 저장
         for (var ar : aiResponse.alternativeRegions()) {
             reportAlternativeRegionRepository.save(ReportAlternativeRegion.create(
-                    reportId, ar.regionCode(), ar.reason(), ar.stat()
+                    reportId, ar.regionCode(), ar.rank(), ar.aiMessage()
             ));
         }
 

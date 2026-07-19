@@ -6,6 +6,8 @@ import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.region.District;
 import bigbang.butilkka_be.region.DistrictRepository;
 import bigbang.butilkka_be.report.dto.ReportDetailResponse;
+import bigbang.butilkka_be.stats.DistrictStats;
+import bigbang.butilkka_be.stats.DistrictStatsQueryService;
 import bigbang.butilkka_be.user.User;
 import bigbang.butilkka_be.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,9 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +33,7 @@ public class ReportDetailService {
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final ReportGenerateService reportGenerateService;
+    private final DistrictStatsQueryService districtStatsQueryService;
 
     public ReportDetailResponse getLatest(Long userId) {
         User user = userRepository.findById(userId)
@@ -82,13 +88,18 @@ public class ReportDetailService {
                 .toList();
 
         List<ReportAlternativeRegion> alternativeRegionEntities = reportAlternativeRegionRepository.findByReportId(report.getReportId());
-        List<ReportDetailResponse.AlternativeRegion> alternativeRegions = new ArrayList<>();
-        for (int i = 0; i < alternativeRegionEntities.size(); i++) {
-            alternativeRegions.add(toAlternativeRegion(alternativeRegionEntities.get(i), i + 1));
-        }
+        List<ReportDetailResponse.AlternativeRegion> alternativeRegions = enrichAlternativeRegions(alternativeRegionEntities);
 
         ReportDetailResponse.Decision decision = new ReportDetailResponse.Decision(
                 report.getDecisionRecommendation(), report.getDecisionTitle(), report.getDecisionDescription());
+
+        // AI 추천 카드
+        ReportDetailResponse.AiRecommendation aiRecommendation = new ReportDetailResponse.AiRecommendation(
+                report.getAiRecBadgeType() != null ? report.getAiRecBadgeType() : "AI 추천",
+                report.getAiRecTitle(),
+                report.getAiRecReasonTitle(),
+                report.getAiRecReasonDetail()
+        );
 
         return new ReportDetailResponse(
                 report.getReportId(),
@@ -108,7 +119,8 @@ public class ReportDetailService {
                 signals,
                 similarCases,
                 decision,
-                alternativeRegions
+                alternativeRegions,
+                aiRecommendation
         );
     }
 
@@ -130,11 +142,50 @@ public class ReportDetailService {
         return value == null ? null : value.intValue();
     }
 
-    private ReportDetailResponse.AlternativeRegion toAlternativeRegion(ReportAlternativeRegion a, int rank) {
-        // AI가 보내준 코드로 구명 조회
-        String regionName = districtRepository.findById(a.getRegionCode())
-                .map(District::getDistrictName)
-                .orElse("알 수 없음");
-        return new ReportDetailResponse.AlternativeRegion(rank, a.getRegionCode(), regionName, a.getReason(), a.getStat());
+    /**
+     * 대안 상권 목록에 BE DB의 통계 데이터를 추가하여 반환
+     */
+    private List<ReportDetailResponse.AlternativeRegion> enrichAlternativeRegions(List<ReportAlternativeRegion> entities) {
+        if (entities.isEmpty()) {
+            return List.of();
+        }
+
+        // 모든 구의 최신 통계를 한 번에 조회
+        Map<String, DistrictStats> latestStatsMap = districtStatsQueryService.latestPerDistrict()
+                .stream()
+                .collect(Collectors.toMap(DistrictStats::getDistrictCode, Function.identity()));
+
+        // 최신 분기 라벨 (예: "2025Q1")
+        String baseDate = districtStatsQueryService.getLatestQuarterLabel();
+
+        List<ReportDetailResponse.AlternativeRegion> result = new ArrayList<>();
+        for (ReportAlternativeRegion a : entities) {
+            String regionName = districtRepository.findById(a.getRegionCode())
+                    .map(District::getDistrictName)
+                    .orElse("알 수 없음");
+
+            // 해당 구의 최신 통계
+            DistrictStats stats = latestStatsMap.get(a.getRegionCode());
+            Integer storeCount = stats != null ? stats.getStoreCount() : null;
+            Long floatingPopulation = stats != null ? stats.getFootTraffic() : null;
+            Double vacancy = stats != null && stats.getVacancyRate() != null
+                    ? stats.getVacancyRate().doubleValue()
+                    : null;
+
+            result.add(new ReportDetailResponse.AlternativeRegion(
+                    a.getRankOrder(),
+                    a.getRegionCode(),
+                    regionName,
+                    a.getAiMessage(),
+                    storeCount,
+                    floatingPopulation,
+                    vacancy,
+                    baseDate
+            ));
+        }
+
+        // rank 순으로 정렬
+        result.sort(Comparator.comparingInt(ReportDetailResponse.AlternativeRegion::rank));
+        return result;
     }
 }
