@@ -31,7 +31,7 @@ class RegionDetailControllerTest {
 
     @Test
     void getDetail_returnsOk() throws Exception {
-        when(regionDetailService.getDetail("1168064000")).thenReturn(new RegionDetailResponse(
+        when(regionDetailService.getDetail("1168064000", null)).thenReturn(new RegionDetailResponse(
                 "1168064000", "강남구", "역삼1동", "2026Q4",
                 new RegionDetailResponse.DeclineGradeSummary("A", "C", List.of()),
                 null, null, null, null, null));
@@ -39,5 +39,17 @@ class RegionDetailControllerTest {
         mockMvc.perform(get("/api/v1/districts/1168064000"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.regionName").value("역삼1동"));
+    }
+
+    @Test
+    void getDetail_withQuarter_returnsOk() throws Exception {
+        when(regionDetailService.getDetail("11680", "2025Q3")).thenReturn(new RegionDetailResponse(
+                "11680", "강남구", "강남구", "2025Q3",
+                new RegionDetailResponse.DeclineGradeSummary("B", "C", List.of()),
+                null, null, null, null, null));
+
+        mockMvc.perform(get("/api/v1/districts/11680").param("quarter", "2025Q3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.quarter").value("2025Q3"));
     }
 }

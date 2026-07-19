@@ -15,23 +15,58 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class RegionDetailService {
 
     private static final BigDecimal SEOUL_AVG_OPERATING_YEARS = new BigDecimal("4.1");
+    private static final Pattern QUARTER_PATTERN = Pattern.compile("^(\\d{4})Q([1-4])$");
+    private static final int MAX_TREND_QUARTERS = 12;
 
     private final DistrictStatsQueryService districtStatsQueryService;
 
-    public RegionDetailResponse getDetail(String code) {
+    public RegionDetailResponse getDetail(String code, String quarterParam) {
         // 10자리 행정동 코드가 오면 앞 5자리로 구 코드 추출
         String districtCode = code.length() >= 5 ? code.substring(0, 5) : code;
 
-        List<DistrictStats> history = districtStatsQueryService.historyForDistrict(districtCode);
-        if (history.isEmpty()) {
+        List<DistrictStats> fullHistory = districtStatsQueryService.historyForDistrict(districtCode);
+        if (fullHistory.isEmpty()) {
             throw AppException.notFound("존재하지 않는 구코드입니다.");
         }
+
+        // quarter 파라미터 파싱 및 필터링
+        List<DistrictStats> history;
+        if (quarterParam != null && !quarterParam.isBlank()) {
+            int[] parsed = parseQuarter(quarterParam);
+            int targetYear = parsed[0];
+            int targetQuarter = parsed[1];
+
+            // 해당 분기까지의 데이터만 필터링
+            history = fullHistory.stream()
+                    .filter(s -> s.getYear() < targetYear ||
+                            (s.getYear() == targetYear && s.getQuarter() <= targetQuarter))
+                    .toList();
+
+            if (history.isEmpty()) {
+                throw AppException.notFound("해당 분기(" + quarterParam + ")의 데이터가 없습니다.");
+            }
+
+            // 요청한 분기 데이터가 존재하는지 확인
+            DistrictStats last = history.get(history.size() - 1);
+            if (last.getYear() != targetYear || last.getQuarter() != targetQuarter) {
+                throw AppException.notFound("해당 분기(" + quarterParam + ")의 데이터가 없습니다.");
+            }
+        } else {
+            history = fullHistory;
+        }
+
+        // trend용 데이터: 최근 12분기까지만
+        List<DistrictStats> trendHistory = history.size() > MAX_TREND_QUARTERS
+                ? history.subList(history.size() - MAX_TREND_QUARTERS, history.size())
+                : history;
 
         DistrictStats latest = history.get(history.size() - 1);
         DistrictStats previous = history.size() >= 2 ? history.get(history.size() - 2) : null;
@@ -41,18 +76,31 @@ public class RegionDetailService {
                 latest.getDistrictName(),  // district field
                 latest.getDistrictName(),  // regionName (구 기반이므로 동일)
                 label(latest),
-                buildGradeSummary(history, latest, previous),
-                buildMetricSummary(history, s -> s.getSalesAmount(), DistrictStats::getSalesDelta),  // 매출
-                buildMetricSummary(history, s -> s.getFootTraffic(), DistrictStats::getFootTrafficDelta),
-                buildVacancyRateSummary(history),  // 공실률은 CSV에 이미 %로 저장됨
-                buildClosureRateSummary(history, latest),
-                buildStoreCountSummary(history, latest)
+                buildGradeSummary(trendHistory, latest, previous),
+                buildMetricSummary(trendHistory, latest, s -> s.getSalesAmount(), DistrictStats::getSalesDelta),  // 매출
+                buildMetricSummary(trendHistory, latest, s -> s.getFootTraffic(), DistrictStats::getFootTrafficDelta),
+                buildVacancyRateSummary(trendHistory, latest),  // 공실률은 CSV에 이미 %로 저장됨
+                buildClosureRateSummary(trendHistory, latest),
+                buildStoreCountSummary(trendHistory, latest)
         );
     }
 
+    /**
+     * "2025Q3" 형식의 문자열을 [year, quarter] 배열로 파싱
+     */
+    private int[] parseQuarter(String quarterStr) {
+        Matcher matcher = QUARTER_PATTERN.matcher(quarterStr.trim());
+        if (!matcher.matches()) {
+            throw AppException.badRequest("잘못된 분기 형식입니다. 예: 2025Q3");
+        }
+        int year = Integer.parseInt(matcher.group(1));
+        int quarter = Integer.parseInt(matcher.group(2));
+        return new int[]{year, quarter};
+    }
+
     private RegionDetailResponse.DeclineGradeSummary buildGradeSummary(
-            List<DistrictStats> history, DistrictStats latest, DistrictStats previous) {
-        List<RegionDetailResponse.GradeTrendPoint> trend = history.stream()
+            List<DistrictStats> trendHistory, DistrictStats latest, DistrictStats previous) {
+        List<RegionDetailResponse.GradeTrendPoint> trend = trendHistory.stream()
                 .map(s -> new RegionDetailResponse.GradeTrendPoint(label(s), s.getDeclineGrade()))
                 .toList();
         String previousGrade = previous != null ? previous.getDeclineGrade() : null;
@@ -60,11 +108,11 @@ public class RegionDetailService {
     }
 
     private MetricSummary buildMetricSummary(
-            List<DistrictStats> history,
+            List<DistrictStats> trendHistory,
+            DistrictStats latest,
             Function<DistrictStats, Number> valueFn,
             Function<DistrictStats, Number> deltaFn) {
-        DistrictStats latest = history.get(history.size() - 1);
-        List<MetricTrendPoint> trend = history.stream()
+        List<MetricTrendPoint> trend = trendHistory.stream()
                 .map(s -> new MetricTrendPoint(label(s), valueFn.apply(s)))
                 .toList();
         String direction = resolveDirection(deltaFn.apply(latest));
@@ -72,30 +120,17 @@ public class RegionDetailService {
         return new MetricSummary(valueFn.apply(latest), deltaPercent, direction, trend);
     }
 
-    private MetricSummary buildRateMetricSummary(
-            List<DistrictStats> history,
-            Function<DistrictStats, Number> valueFn,
-            Function<DistrictStats, Number> deltaFn) {
-        DistrictStats latest = history.get(history.size() - 1);
-        List<MetricTrendPoint> trend = history.stream()
-                .map(s -> new MetricTrendPoint(label(s), toPercent(valueFn.apply(s))))
-                .toList();
-        String direction = resolveDirection(deltaFn.apply(latest));
-        return new MetricSummary(toPercent(valueFn.apply(latest)), toPercent(deltaFn.apply(latest)), direction, trend);
-    }
-
-    private MetricSummary buildVacancyRateSummary(List<DistrictStats> history) {
+    private MetricSummary buildVacancyRateSummary(List<DistrictStats> trendHistory, DistrictStats latest) {
         // 공실률은 CSV에 이미 %로 저장됨 (3.32 = 3.32%)
-        DistrictStats latest = history.get(history.size() - 1);
-        List<MetricTrendPoint> trend = history.stream()
+        List<MetricTrendPoint> trend = trendHistory.stream()
                 .map(s -> new MetricTrendPoint(label(s), toDouble(s.getVacancyRate())))
                 .toList();
         String direction = resolveDirection(latest.getVacancyRateDelta());
         return new MetricSummary(toDouble(latest.getVacancyRate()), toDouble(latest.getVacancyRateDelta()), direction, trend);
     }
 
-    private ClosureRateSummary buildClosureRateSummary(List<DistrictStats> history, DistrictStats latest) {
-        List<MetricTrendPoint> trend = history.stream()
+    private ClosureRateSummary buildClosureRateSummary(List<DistrictStats> trendHistory, DistrictStats latest) {
+        List<MetricTrendPoint> trend = trendHistory.stream()
                 .map(s -> new MetricTrendPoint(label(s), toPercent(s.getClosureRate())))
                 .toList();
         String direction = resolveDirection(latest.getClosureRateDelta());
@@ -105,8 +140,8 @@ public class RegionDetailService {
                 avgYears, SEOUL_AVG_OPERATING_YEARS);
     }
 
-    private StoreCountSummary buildStoreCountSummary(List<DistrictStats> history, DistrictStats latest) {
-        List<MetricTrendPoint> trend = history.stream()
+    private StoreCountSummary buildStoreCountSummary(List<DistrictStats> trendHistory, DistrictStats latest) {
+        List<MetricTrendPoint> trend = trendHistory.stream()
                 .map(s -> new MetricTrendPoint(label(s), s.getStoreCount()))
                 .toList();
         String direction = resolveDirection(latest.getStoreCountDelta());
