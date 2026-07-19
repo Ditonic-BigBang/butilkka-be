@@ -8,6 +8,7 @@ import bigbang.butilkka_be.stats.DistrictStatsQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -39,40 +40,31 @@ public class RegionRankingService {
             quarterLabel = quarterParam;
         }
 
-        // districtRank가 있으면 CSV 순위 기준, 없으면 등급 기준 정렬
-        boolean hasRankData = statsList.stream().anyMatch(s -> s.getDistrictRank() != null);
+        // 등급 우선 정렬 → 같은 등급 내 compositeScore 정렬
+        // top (위험한 순): E→D→C→B→A, 점수 높은 순
+        // bottom (안전한 순): A→B→C→D→E, 점수 낮은 순
+        Comparator<DistrictStats> comparator = Comparator
+                .comparingInt((DistrictStats s) -> gradeToIndex(s.getDeclineGrade()))
+                .thenComparing((DistrictStats s) -> s.getCompositeScore() != null ? s.getCompositeScore() : BigDecimal.ZERO);
 
-        List<DistrictStats> sorted;
-        if (hasRankData) {
-            // CSV 구순위(districtRank) 기준 정렬
-            Comparator<DistrictStats> byRank = Comparator.comparingInt(s ->
-                    s.getDistrictRank() != null ? s.getDistrictRank() : Integer.MAX_VALUE);
-            if ("bottom".equals(order)) {
-                byRank = byRank.reversed();
-            }
-            sorted = statsList.stream()
-                    .filter(s -> s.getDistrictRank() != null)
-                    .sorted(byRank).limit(5).toList();
-        } else {
-            // fallback: 등급 기준 정렬 (E→A for top, A→E for bottom)
-            Comparator<DistrictStats> byGrade = Comparator.comparingInt(s -> {
-                String grade = s.getDeclineGrade();
-                int idx = grade == null ? -1 : "ABCDE".indexOf(grade);
-                return idx < 0 ? Integer.MAX_VALUE : idx;
-            });
-            if ("top".equals(order)) {
-                byGrade = byGrade.reversed();  // top = 위험한 순 (E먼저)
-            }
-            sorted = statsList.stream()
-                    .filter(s -> s.getDeclineGrade() != null)
-                    .sorted(byGrade).limit(5).toList();
+        if ("top".equals(order)) {
+            // 위험한 순: 등급 역순(E먼저) + 점수 높은 순
+            comparator = Comparator
+                    .comparingInt((DistrictStats s) -> gradeToIndex(s.getDeclineGrade()))
+                    .reversed()
+                    .thenComparing((DistrictStats s) -> s.getCompositeScore() != null ? s.getCompositeScore() : BigDecimal.ZERO, Comparator.reverseOrder());
         }
+
+        List<DistrictStats> sorted = statsList.stream()
+                .filter(s -> s.getDeclineGrade() != null)
+                .sorted(comparator)
+                .limit(5)
+                .toList();
 
         List<RegionRankingItem> items = new java.util.ArrayList<>();
         for (int i = 0; i < sorted.size(); i++) {
             DistrictStats s = sorted.get(i);
-            int rank = s.getDistrictRank() != null ? s.getDistrictRank() : (i + 1);
-            items.add(toRankingItem(s, rank));
+            items.add(toRankingItem(s, i + 1));
         }
 
         return new RegionRankingResponse(order, quarterLabel, items);
@@ -98,5 +90,17 @@ public class RegionRankingService {
             return Optional.empty();
         }
         return Optional.of(new int[]{Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2))});
+    }
+
+    private static int gradeToIndex(String grade) {
+        if (grade == null) return Integer.MAX_VALUE;
+        return switch (grade) {
+            case "A" -> 0;
+            case "B" -> 1;
+            case "C" -> 2;
+            case "D" -> 3;
+            case "E" -> 4;
+            default -> Integer.MAX_VALUE;
+        };
     }
 }
