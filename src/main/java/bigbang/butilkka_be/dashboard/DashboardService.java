@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 
@@ -53,8 +55,10 @@ public class DashboardService {
                 trendOf(history, latest.getStoreCountDelta(), latest.getStoreCountGap(), DistrictStats::getStoreCount, "개"),
                 rateTrendOf(history, latest.getClosureRateDelta(), latest.getClosureRateGap(), DistrictStats::getClosureRate, "%p"));
 
-        // briefing이 DistrictStats에 없으므로 null 처리
-        return new DashboardResponse(store, grade, null, metrics);
+        // 실제 데이터 기반 AI briefing 생성
+        String briefing = generateBriefing(latest, history);
+
+        return new DashboardResponse(store, grade, briefing, metrics);
     }
 
     private DashboardResponse.StoreInfo buildStore(User user, DistrictStats stats) {
@@ -131,4 +135,97 @@ public class DashboardService {
     private Double toPercent(Number number) {
         return number == null ? null : number.doubleValue() * 100;
     }
+
+    /**
+     * 변동성 큰 지표 2개를 선택해서 AI briefing 문장 생성
+     */
+    private String generateBriefing(DistrictStats latest, List<DistrictStats> history) {
+        // 1년 전 데이터 찾기 (4분기 전)
+        DistrictStats yearAgo = history.size() >= 5 ? history.get(history.size() - 5) : history.get(0);
+
+        // 지표별 변화 계산
+        List<MetricChange> changes = new ArrayList<>();
+
+        // 유동인구
+        if (latest.getFootTraffic() != null && yearAgo.getFootTraffic() != null && yearAgo.getFootTraffic() != 0) {
+            double change = (latest.getFootTraffic() - yearAgo.getFootTraffic()) * 100.0 / yearAgo.getFootTraffic();
+            changes.add(new MetricChange("유동인구", change, false));
+        }
+
+        // 점포수
+        if (latest.getStoreCount() != null && yearAgo.getStoreCount() != null && yearAgo.getStoreCount() != 0) {
+            double change = (latest.getStoreCount() - yearAgo.getStoreCount()) * 100.0 / yearAgo.getStoreCount();
+            changes.add(new MetricChange("점포수", change, false));
+        }
+
+        // 폐업률 (비율이므로 차이로 계산)
+        if (latest.getClosureRate() != null && yearAgo.getClosureRate() != null) {
+            double change = (latest.getClosureRate().doubleValue() - yearAgo.getClosureRate().doubleValue()) * 100;
+            changes.add(new MetricChange("폐업률", change, true));
+        }
+
+        // 공실률
+        if (latest.getVacancyRate() != null && yearAgo.getVacancyRate() != null) {
+            double change = (latest.getVacancyRate().doubleValue() - yearAgo.getVacancyRate().doubleValue()) * 100;
+            changes.add(new MetricChange("공실률", change, true));
+        }
+
+        // 매출
+        if (latest.getSalesAmount() != null && yearAgo.getSalesAmount() != null && yearAgo.getSalesAmount() != 0) {
+            double change = (latest.getSalesAmount() - yearAgo.getSalesAmount()) * 100.0 / yearAgo.getSalesAmount();
+            changes.add(new MetricChange("매출", change, false));
+        }
+
+        // 변동성 큰 순으로 정렬 (절대값 기준)
+        changes.sort(Comparator.comparingDouble((MetricChange m) -> Math.abs(m.change)).reversed());
+
+        if (changes.size() < 2) {
+            return null;
+        }
+
+        // 상위 2개 선택
+        MetricChange first = changes.get(0);
+        MetricChange second = changes.get(1);
+
+        return String.format("최근 1년간 %s, %s, %s",
+                formatMetricSentence(first),
+                formatMetricSentence(second),
+                generateConclusion(first, second));
+    }
+
+    private String formatMetricSentence(MetricChange metric) {
+        String direction = metric.change >= 0 ? "증가" : "감소";
+        if (metric.isRate) {
+            direction = metric.change >= 0 ? "상승" : "하락";
+        }
+        double absChange = Math.abs(metric.change);
+        return String.format("%s이(가) %.1f%% %s했고", metric.name, absChange, direction);
+    }
+
+    private String generateConclusion(MetricChange first, MetricChange second) {
+        // 긍정 지표: 유동인구 증가, 점포수 증가, 매출 증가, 폐업률 감소, 공실률 감소
+        int positiveCount = 0;
+
+        if (first.name.equals("폐업률") || first.name.equals("공실률")) {
+            if (first.change < 0) positiveCount++;
+        } else {
+            if (first.change > 0) positiveCount++;
+        }
+
+        if (second.name.equals("폐업률") || second.name.equals("공실률")) {
+            if (second.change < 0) positiveCount++;
+        } else {
+            if (second.change > 0) positiveCount++;
+        }
+
+        if (positiveCount == 2) {
+            return "상권이 성장세를 보이고 있어요.";
+        } else if (positiveCount == 1) {
+            return "상권이 안정적인 흐름을 유지하고 있어요.";
+        } else {
+            return "상권 변화에 주의가 필요해요.";
+        }
+    }
+
+    private record MetricChange(String name, double change, boolean isRate) {}
 }
