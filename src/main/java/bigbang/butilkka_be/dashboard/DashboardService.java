@@ -158,15 +158,15 @@ public class DashboardService {
             changes.add(new MetricChange("점포수", change, false));
         }
 
-        // 폐업률 (비율이므로 차이로 계산)
+        // 폐업률 (이미 퍼센트 값으로 저장됨)
         if (latest.getClosureRate() != null && yearAgo.getClosureRate() != null) {
-            double change = (latest.getClosureRate().doubleValue() - yearAgo.getClosureRate().doubleValue()) * 100;
+            double change = latest.getClosureRate().doubleValue() - yearAgo.getClosureRate().doubleValue();
             changes.add(new MetricChange("폐업률", change, true));
         }
 
-        // 공실률
+        // 공실률 (이미 퍼센트 값으로 저장됨)
         if (latest.getVacancyRate() != null && yearAgo.getVacancyRate() != null) {
-            double change = (latest.getVacancyRate().doubleValue() - yearAgo.getVacancyRate().doubleValue()) * 100;
+            double change = latest.getVacancyRate().doubleValue() - yearAgo.getVacancyRate().doubleValue();
             changes.add(new MetricChange("공실률", change, true));
         }
 
