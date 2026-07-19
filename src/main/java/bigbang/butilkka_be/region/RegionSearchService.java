@@ -19,7 +19,8 @@ public class RegionSearchService {
             throw AppException.badRequest("검색어를 입력해주세요.");
         }
 
-        return regionRepository.findByRegionNameContaining(keyword).stream()
+        // regionName 또는 districtName으로 검색
+        return regionRepository.searchByKeyword(keyword.trim()).stream()
                 .map(this::toSearchItem)
                 .toList();
     }

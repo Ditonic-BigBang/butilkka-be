@@ -32,12 +32,12 @@ class RegionSearchServiceTest {
     }
 
     @Test
-    void search_withMatchingKeyword_returnsResultsWithDistrict() {
+    void search_withMatchingRegionName_returnsResultsWithDistrict() {
         Region region = mock(Region.class);
         when(region.getRegionCode()).thenReturn("1168064000");
         when(region.getRegionName()).thenReturn("역삼1동");
         when(region.getDistrictCode()).thenReturn("11680");
-        when(regionRepository.findByRegionNameContaining("역삼")).thenReturn(List.of(region));
+        when(regionRepository.searchByKeyword("역삼")).thenReturn(List.of(region));
 
         District district = mock(District.class);
         when(district.getDistrictName()).thenReturn("강남구");
@@ -48,6 +48,25 @@ class RegionSearchServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).regionName()).isEqualTo("역삼1동");
         assertThat(result.get(0).district()).isEqualTo("강남구");
+    }
+
+    @Test
+    void search_withMatchingDistrictName_returnsResults() {
+        // "마" 검색 시 districtName "마포구"에 매칭되는 region 반환
+        Region region = mock(Region.class);
+        when(region.getRegionCode()).thenReturn("1144051000");
+        when(region.getRegionName()).thenReturn("망원1동");
+        when(region.getDistrictCode()).thenReturn("11440");
+        when(regionRepository.searchByKeyword("마")).thenReturn(List.of(region));
+
+        District district = mock(District.class);
+        when(district.getDistrictName()).thenReturn("마포구");
+        when(districtRepository.findById("11440")).thenReturn(Optional.of(district));
+
+        List<RegionSearchItem> result = service.search("마");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).district()).isEqualTo("마포구");
     }
 
     @Test
@@ -68,7 +87,7 @@ class RegionSearchServiceTest {
 
     @Test
     void search_withNoMatch_returnsEmptyList() {
-        when(regionRepository.findByRegionNameContaining("없는동")).thenReturn(List.of());
+        when(regionRepository.searchByKeyword("없는동")).thenReturn(List.of());
 
         List<RegionSearchItem> result = service.search("없는동");
 
