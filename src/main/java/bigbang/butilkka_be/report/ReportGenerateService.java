@@ -91,6 +91,9 @@ public class ReportGenerateService {
 
         // AI 서버 호출
         ReportGenerateResponse aiResponse = aiServerClient.generateReport(request);
+        if (aiResponse == null) {
+            throw AppException.badRequest("AI 서버 응답이 비어 있습니다.");
+        }
 
         // Report 저장 (regionCode 대신 districtCode 사용)
         Report report = Report.create(userId, districtCode, user.getCategoryCode(), year, quarter, grade, score, declineType);
@@ -118,18 +121,18 @@ public class ReportGenerateService {
 
         Long reportId = report.getReportId();
 
-        // Causes 저장
-        for (var cause : aiResponse.causes()) {
+        // Causes 저장 (AI 응답에서 생략될 수 있으므로 null-safe하게 처리)
+        for (var cause : orEmpty(aiResponse.causes())) {
             reportCauseRepository.save(ReportCause.create(reportId, cause.title(), cause.level(), cause.description()));
         }
 
         // Signals 저장
-        for (var signal : aiResponse.signals()) {
+        for (var signal : orEmpty(aiResponse.signals())) {
             reportSignalRepository.save(ReportSignal.create(reportId, signal.title(), signal.description()));
         }
 
         // Similar Cases 저장
-        for (var sc : aiResponse.similarCases()) {
+        for (var sc : orEmpty(aiResponse.similarCases())) {
             reportSimilarCaseRepository.save(ReportSimilarCase.create(
                     reportId, sc.regionCode(), sc.regionName(), sc.summary(), sc.description(),
                     sc.startYear(), sc.endYear(), sc.tag1(), sc.tag2(), sc.tag3(), sc.tag4()
@@ -137,7 +140,7 @@ public class ReportGenerateService {
         }
 
         // Alternative Regions 저장
-        for (var ar : aiResponse.alternativeRegions()) {
+        for (var ar : orEmpty(aiResponse.alternativeRegions())) {
             reportAlternativeRegionRepository.save(ReportAlternativeRegion.create(
                     reportId, ar.regionCode(), ar.rank(), ar.aiMessage()
             ));
@@ -170,5 +173,9 @@ public class ReportGenerateService {
 
     private Double toDouble(BigDecimal value) {
         return value != null ? value.doubleValue() : null;
+    }
+
+    private static <T> List<T> orEmpty(List<T> list) {
+        return list != null ? list : List.of();
     }
 }
