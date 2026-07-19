@@ -6,6 +6,7 @@ import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.region.District;
 import bigbang.butilkka_be.region.DistrictRepository;
 import bigbang.butilkka_be.report.dto.ReportDetailResponse;
+import bigbang.butilkka_be.stats.DistrictStatsQueryService;
 import bigbang.butilkka_be.user.User;
 import bigbang.butilkka_be.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,8 @@ class ReportDetailServiceTest {
     private UserRepository userRepository;
     @Mock
     private ReportGenerateService reportGenerateService;
+    @Mock
+    private DistrictStatsQueryService districtStatsQueryService;
 
     private ReportDetailService service;
 
@@ -52,7 +55,8 @@ class ReportDetailServiceTest {
         service = new ReportDetailService(
                 reportRepository, reportCauseRepository, reportSignalRepository,
                 reportSimilarCaseRepository, reportAlternativeRegionRepository,
-                districtRepository, categoryRepository, userRepository, reportGenerateService);
+                districtRepository, categoryRepository, userRepository, reportGenerateService,
+                districtStatsQueryService);
     }
 
     private static Report reportOf(Long reportId, Long userId, String districtCode, int year, int quarter, String grade, int score) {

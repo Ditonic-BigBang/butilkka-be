@@ -63,7 +63,7 @@ class ReportGenerateServiceTest {
         // (Jackson deserializes missing record components to null).
         ReportGenerateResponse aiResponse = new ReportGenerateResponse(
                 "summary", "outlook", "버티기", "title", "description",
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
         when(aiServerClient.generateReport(org.mockito.ArgumentMatchers.any(ReportGenerateRequest.class)))
                 .thenReturn(aiResponse);
 
