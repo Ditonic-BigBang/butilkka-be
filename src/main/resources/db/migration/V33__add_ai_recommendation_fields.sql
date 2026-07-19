@@ -11,8 +11,8 @@ ALTER TABLE reports
 ALTER TABLE report_alternative_regions
     DROP FOREIGN KEY FK_report_alternative_regions_region;
 
--- 기존 데이터 삭제 (새 스키마와 호환되지 않음)
-TRUNCATE TABLE report_alternative_regions;
+-- 기존 데이터 삭제 (FK 있어도 DELETE는 가능)
+DELETE FROM report_alternative_regions;
 
 -- 컬럼 변경
 ALTER TABLE report_alternative_regions
