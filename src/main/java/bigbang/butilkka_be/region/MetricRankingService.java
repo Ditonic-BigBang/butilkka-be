@@ -100,8 +100,7 @@ public class MetricRankingService {
 
     private BigDecimal extractMetricValue(DistrictStats stats, String metric) {
         return switch (metric) {
-            case "rentRatio" -> stats.getSalesAmount() != null
-                    ? BigDecimal.valueOf(stats.getSalesAmount()) : null;
+            case "rentRatio" -> calcSalesPerStore(stats);  // 매출 / 점포수
             case "footTraffic" -> stats.getFootTraffic() != null
                     ? BigDecimal.valueOf(stats.getFootTraffic()) : null;
             case "vacancyRate" -> stats.getVacancyRate();  // 이미 % 단위
@@ -110,6 +109,17 @@ public class MetricRankingService {
                     ? BigDecimal.valueOf(stats.getStoreCount()) : null;
             default -> null;
         };
+    }
+
+    /**
+     * 점포당 매출 = 매출 / 점포수
+     */
+    private BigDecimal calcSalesPerStore(DistrictStats stats) {
+        if (stats.getSalesAmount() == null || stats.getStoreCount() == null || stats.getStoreCount() == 0) {
+            return null;
+        }
+        return BigDecimal.valueOf(stats.getSalesAmount())
+                .divide(BigDecimal.valueOf(stats.getStoreCount()), 0, java.math.RoundingMode.HALF_UP);
     }
 
     private BigDecimal toPercent(BigDecimal value) {

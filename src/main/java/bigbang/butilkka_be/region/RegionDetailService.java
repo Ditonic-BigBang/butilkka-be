@@ -77,7 +77,7 @@ public class RegionDetailService {
                 latest.getDistrictName(),  // regionName (구 기반이므로 동일)
                 label(latest),
                 buildGradeSummary(trendHistory, latest, previous),
-                buildMetricSummary(trendHistory, latest, s -> s.getSalesAmount(), DistrictStats::getSalesDelta),  // 매출
+                buildMetricSummary(trendHistory, latest, this::calcSalesPerStore, DistrictStats::getSalesDelta),  // 점포당 매출
                 buildMetricSummary(trendHistory, latest, s -> s.getFootTraffic(), DistrictStats::getFootTrafficDelta),
                 buildVacancyRateSummary(trendHistory, latest),  // 공실률은 CSV에 이미 %로 저장됨
                 buildClosureRateSummary(trendHistory, latest),
@@ -175,5 +175,15 @@ public class RegionDetailService {
 
     private Double toDouble(Number value) {
         return value == null ? null : value.doubleValue();
+    }
+
+    /**
+     * 점포당 매출 = 매출 / 점포수
+     */
+    private Number calcSalesPerStore(DistrictStats stats) {
+        if (stats.getSalesAmount() == null || stats.getStoreCount() == null || stats.getStoreCount() == 0) {
+            return null;
+        }
+        return stats.getSalesAmount() / stats.getStoreCount();
     }
 }
