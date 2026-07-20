@@ -92,25 +92,21 @@ public class ReportGenerateService {
 
         log.info("리포트 생성 요청 - district: {}, year: {}, quarter: {}", districtCode, year, quarter);
 
+        // 같은 가게+분기 기존 리포트가 있으면 그대로 반환 (재생성 안 함)
+        var existingReport = reportRepository.findByUserIdAndRegionCodeAndYearAndQuarter(userId, districtCode, year, quarter);
+        if (existingReport.isPresent()) {
+            log.info("기존 리포트 존재 - reportId: {}", existingReport.get().getReportId());
+            return existingReport.get();
+        }
+
         // AI 서버 호출
         ReportGenerateResponse aiResponse = aiServerClient.generateReport(request);
         if (aiResponse == null) {
             throw AppException.badRequest("AI 서버 응답이 비어 있습니다.");
         }
 
-        // 같은 가게+분기 기존 리포트 조회 (업서트)
-        Report report = reportRepository.findByUserIdAndRegionCodeAndYearAndQuarter(userId, districtCode, year, quarter)
-                .orElseGet(() -> Report.create(userId, districtCode, user.getCategoryCode(), year, quarter, grade, score, declineType));
-
-        // 기존 리포트가 있으면 관련 데이터 삭제
-        if (report.getReportId() != null) {
-            Long existingReportId = report.getReportId();
-            reportCauseRepository.deleteByReportId(existingReportId);
-            reportSignalRepository.deleteByReportId(existingReportId);
-            reportSimilarCaseRepository.deleteByReportId(existingReportId);
-            reportAlternativeRegionRepository.deleteByReportId(existingReportId);
-            reportDecisionReasonsRepository.deleteByReportId(existingReportId);
-        }
+        // 새 리포트 생성
+        Report report = Report.create(userId, districtCode, user.getCategoryCode(), year, quarter, grade, score, declineType);
 
         // AI 추천 카드 데이터 추출
         var aiRec = aiResponse.aiRecommendation();
