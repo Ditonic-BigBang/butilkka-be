@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -91,14 +92,19 @@ class ReportDetailServiceTest {
     }
 
     @Test
-    void getLatest_picksHighestYearQuarter() {
+    void getLatest_returnsCurrentQuarterReport() {
+        // 현재 분기 계산
+        LocalDate now = LocalDate.now();
+        int currentYear = now.getYear();
+        int currentQuarter = (now.getMonthValue() - 1) / 3 + 1;
+
         User user = mock(User.class);
         when(user.getStoreRegion()).thenReturn("1168064000");
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
-        Report older = reportOf(5L, 1L, "11680", 2026, 1, "B", 70);
-        Report newer = reportOf(1L, 1L, "11680", 2026, 4, "A", 90);
-        when(reportRepository.findByUserId(1L)).thenReturn(List.of(older, newer));
+        Report currentQuarterReport = reportOf(1L, 1L, "11680", currentYear, currentQuarter, "A", 90);
+        when(reportRepository.findByUserIdAndRegionCodeAndYearAndQuarter(1L, "11680", currentYear, currentQuarter))
+                .thenReturn(Optional.of(currentQuarterReport));
         stubDistrictAndCategory("11680");
         when(reportCauseRepository.findByReportId(1L)).thenReturn(List.of());
         when(reportSignalRepository.findByReportId(1L)).thenReturn(List.of());
@@ -108,9 +114,40 @@ class ReportDetailServiceTest {
         ReportDetailResponse response = service.getLatest(1L);
 
         assertThat(response.reportId()).isEqualTo(1L);
-        assertThat(response.quarter()).isEqualTo("2026Q4");
+        assertThat(response.quarter()).isEqualTo(currentYear + "Q" + currentQuarter);
         assertThat(response.districtName()).isEqualTo("강남구");
         assertThat(response.score()).isEqualTo(90);
+        assertThat(response.generated()).isFalse();
+    }
+
+    @Test
+    void getLatest_generatesNewReportWhenNoCurrentQuarter() {
+        // 현재 분기 계산
+        LocalDate now = LocalDate.now();
+        int currentYear = now.getYear();
+        int currentQuarter = (now.getMonthValue() - 1) / 3 + 1;
+
+        User user = mock(User.class);
+        when(user.getStoreRegion()).thenReturn("1168064000");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        // 현재 분기 리포트 없음
+        when(reportRepository.findByUserIdAndRegionCodeAndYearAndQuarter(1L, "11680", currentYear, currentQuarter))
+                .thenReturn(Optional.empty());
+
+        // 새로 생성된 리포트
+        Report newReport = reportOf(2L, 1L, "11680", currentYear, currentQuarter, "B", 70);
+        when(reportGenerateService.generateAndSave(1L)).thenReturn(newReport);
+        stubDistrictAndCategory("11680");
+        when(reportCauseRepository.findByReportId(2L)).thenReturn(List.of());
+        when(reportSignalRepository.findByReportId(2L)).thenReturn(List.of());
+        when(reportSimilarCaseRepository.findByReportId(2L)).thenReturn(List.of());
+        when(reportAlternativeRegionRepository.findByReportId(2L)).thenReturn(List.of());
+
+        ReportDetailResponse response = service.getLatest(1L);
+
+        assertThat(response.reportId()).isEqualTo(2L);
+        assertThat(response.generated()).isTrue();
     }
 
     @Test

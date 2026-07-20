@@ -13,10 +13,12 @@ import bigbang.butilkka_be.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -47,14 +49,20 @@ public class ReportDetailService {
         // 10자리 행정동 코드에서 앞 5자리 구코드 추출
         String districtCode = currentRegion.substring(0, 5);
 
-        // 현재 대표 위치(구코드)에 해당하는 리포트만 조회
-        var existingReport = reportRepository.findByUserId(userId).stream()
-                .filter(r -> districtCode.equals(r.getRegionCode()))
-                .max(Comparator.comparingInt(Report::getYear).thenComparingInt(Report::getQuarter));
+        // 현재 분기 계산
+        LocalDate now = LocalDate.now();
+        int currentYear = now.getYear();
+        int currentQuarter = (now.getMonthValue() - 1) / 3 + 1;
 
-        if (existingReport.isPresent()) {
-            return buildDetail(existingReport.get(), false);
+        // 현재 분기의 리포트가 있는지 확인
+        Optional<Report> currentQuarterReport = reportRepository.findByUserIdAndRegionCodeAndYearAndQuarter(
+                userId, districtCode, currentYear, currentQuarter);
+
+        if (currentQuarterReport.isPresent()) {
+            // 현재 분기 리포트가 있으면 반환
+            return buildDetail(currentQuarterReport.get(), false);
         } else {
+            // 현재 분기 리포트가 없으면 새로 생성
             Report newReport = reportGenerateService.generateAndSave(userId);
             return buildDetail(newReport, true);
         }
