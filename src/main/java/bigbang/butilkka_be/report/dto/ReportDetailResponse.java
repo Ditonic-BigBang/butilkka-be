@@ -21,7 +21,8 @@ public record ReportDetailResponse(
         List<SimilarCasePreview> similarCases,
         Decision decision,
         List<AlternativeRegion> alternativeRegions,
-        AiRecommendation aiRecommendation
+        AiRecommendation aiRecommendation,
+        Boolean generated  // 이번 요청에서 새로 생성된 리포트인지 여부
 ) {
     public record Cause(String title, String level, String description) {}
 

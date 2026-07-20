@@ -48,21 +48,26 @@ public class ReportDetailService {
         String districtCode = currentRegion.substring(0, 5);
 
         // 현재 대표 위치(구코드)에 해당하는 리포트만 조회
-        Report latest = reportRepository.findByUserId(userId).stream()
+        var existingReport = reportRepository.findByUserId(userId).stream()
                 .filter(r -> districtCode.equals(r.getRegionCode()))
-                .max(Comparator.comparingInt(Report::getYear).thenComparingInt(Report::getQuarter))
-                .orElseGet(() -> reportGenerateService.generateAndSave(userId));
-        return buildDetail(latest);
+                .max(Comparator.comparingInt(Report::getYear).thenComparingInt(Report::getQuarter));
+
+        if (existingReport.isPresent()) {
+            return buildDetail(existingReport.get(), false);
+        } else {
+            Report newReport = reportGenerateService.generateAndSave(userId);
+            return buildDetail(newReport, true);
+        }
     }
 
     public ReportDetailResponse getDetail(Long userId, Long reportId) {
         Report report = reportRepository.findById(reportId)
                 .filter(r -> r.getUserId().equals(userId))
                 .orElseThrow(() -> AppException.notFound("존재하지 않는 리포트입니다."));
-        return buildDetail(report);
+        return buildDetail(report, false);
     }
 
-    private ReportDetailResponse buildDetail(Report report) {
+    private ReportDetailResponse buildDetail(Report report, boolean generated) {
         // report.getRegionCode()는 이제 구코드(5자리)
         String districtCode = report.getRegionCode();
         District district = districtRepository.findById(districtCode)
@@ -120,7 +125,8 @@ public class ReportDetailService {
                 similarCases,
                 decision,
                 alternativeRegions,
-                aiRecommendation
+                aiRecommendation,
+                generated
         );
     }
 

@@ -4,6 +4,8 @@ import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.region.District;
 import bigbang.butilkka_be.region.DistrictRepository;
 import bigbang.butilkka_be.report.dto.ReportHistoryResponse;
+import bigbang.butilkka_be.user.User;
+import bigbang.butilkka_be.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,13 +22,23 @@ public class ReportHistoryService {
 
     private final ReportRepository reportRepository;
     private final DistrictRepository districtRepository;
+    private final UserRepository userRepository;
 
     public ReportHistoryResponse getHistory(Long userId, int offset, int limit) {
         if (offset < 0 || limit < 0) {
             throw AppException.badRequest("offset과 limit은 0 이상이어야 합니다.");
         }
 
+        // 사용자의 현재 지역(구코드) 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> AppException.notFound("사용자를 찾을 수 없습니다."));
+        String currentDistrictCode = user.getStoreRegion() != null && user.getStoreRegion().length() >= 5
+                ? user.getStoreRegion().substring(0, 5)
+                : null;
+
+        // 현재 지역의 리포트만 필터링
         List<Report> sorted = reportRepository.findByUserId(userId).stream()
+                .filter(r -> currentDistrictCode != null && currentDistrictCode.equals(r.getRegionCode()))
                 .sorted(Comparator.comparingInt(Report::getYear).thenComparingInt(Report::getQuarter).reversed())
                 .toList();
 

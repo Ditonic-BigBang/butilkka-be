@@ -4,6 +4,8 @@ import bigbang.butilkka_be.common.exception.AppException;
 import bigbang.butilkka_be.region.District;
 import bigbang.butilkka_be.region.DistrictRepository;
 import bigbang.butilkka_be.report.dto.ReportHistoryResponse;
+import bigbang.butilkka_be.user.User;
+import bigbang.butilkka_be.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,9 +13,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -28,11 +32,19 @@ class ReportHistoryServiceTest {
     @Mock
     private DistrictRepository districtRepository;
 
+    @Mock
+    private UserRepository userRepository;
+
     private ReportHistoryService service;
 
     @BeforeEach
     void setUp() {
-        service = new ReportHistoryService(reportRepository, districtRepository);
+        service = new ReportHistoryService(reportRepository, districtRepository, userRepository);
+
+        // 기본 user mock (storeRegion = "1168000000" -> 구코드 "11680")
+        User user = mock(User.class);
+        lenient().when(user.getStoreRegion()).thenReturn("1168000000");
+        lenient().when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
 
         // 기본 district mock (일부 테스트에서 사용되지 않을 수 있으므로 lenient)
         District district = mock(District.class);
@@ -71,14 +83,16 @@ class ReportHistoryServiceTest {
 
     @Test
     void getHistory_appliesOffsetAndLimit() {
-        // q1 and q4 are sorted but skipped by pagination, so only need year/quarter for sorting
+        // q1 and q4 are sorted but skipped by pagination, need regionCode for filtering
         Report q1 = mock(Report.class);
         when(q1.getYear()).thenReturn(2026);
         when(q1.getQuarter()).thenReturn(1);
+        when(q1.getRegionCode()).thenReturn("11680");
 
         Report q4 = mock(Report.class);
         when(q4.getYear()).thenReturn(2026);
         when(q4.getQuarter()).thenReturn(4);
+        when(q4.getRegionCode()).thenReturn("11680");
 
         // q2 and q3 are in the result, so need full stubs
         Report q2 = reportOf(6L, 2026, 2, "A", "2분기 요약");
