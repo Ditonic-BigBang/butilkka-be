@@ -171,6 +171,118 @@ public class ReportGenerateService {
         return report;
     }
 
+    /**
+     * 과거 분기 리포트 생성 (테스트/시딩용)
+     */
+    @Transactional
+    public Report generateForPastQuarter(Long userId, int year, int quarter) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> AppException.notFound("사용자를 찾을 수 없습니다."));
+
+        if (user.getStoreRegion() == null || user.getStoreRegion().length() < 5) {
+            throw AppException.badRequest("등록된 가게 정보가 없거나 지역 코드가 올바르지 않습니다.");
+        }
+
+        String districtCode = user.getStoreRegion().substring(0, 5);
+
+        // 해당 분기의 district_stats 조회
+        List<DistrictStats> quarterStats = districtStatsQueryService.forQuarter(year, quarter);
+        DistrictStats stats = quarterStats.stream()
+                .filter(s -> s.getDistrictCode().equals(districtCode))
+                .findFirst()
+                .orElseThrow(() -> AppException.notFound("해당 분기의 상권 통계가 없습니다."));
+
+        String grade = stats.getDeclineGrade() != null ? stats.getDeclineGrade() : "C";
+        int score = gradeToScore(grade);
+        String declineType = stats.getDirection() != null ? stats.getDirection() : "정체";
+
+        ReportGenerateRequest.ReportContext context = new ReportGenerateRequest.ReportContext(
+                toDouble(stats.getSalesDelta()),
+                toDouble(stats.getFootTrafficDelta()),
+                toDouble(stats.getStoreCountDelta()),
+                toDouble(stats.getClosureRate()),
+                toDouble(stats.getVacancyRate()),
+                null, null
+        );
+
+        String outlookInstructions = "1. 지역명을 반복하지 말 것 (예: '명동 명동' 금지). 2. 구체적인 수치(%, 숫자)를 포함하지 말 것.";
+
+        ReportGenerateRequest request = new ReportGenerateRequest(
+                districtCode, stats.getDistrictName(), stats.getDistrictName(),
+                year, quarter, grade, score, declineType, context, null, outlookInstructions
+        );
+
+        log.info("과거 리포트 생성 요청 - district: {}, year: {}, quarter: {}", districtCode, year, quarter);
+
+        // 기존 리포트 체크
+        var existingReport = reportRepository.findByUserIdAndRegionCodeAndYearAndQuarter(userId, districtCode, year, quarter);
+        if (existingReport.isPresent()) {
+            log.info("기존 리포트 존재 - reportId: {}", existingReport.get().getReportId());
+            return existingReport.get();
+        }
+
+        // AI 서버 호출
+        ReportGenerateResponse aiResponse = aiServerClient.generateReport(request);
+        if (aiResponse == null) {
+            throw AppException.badRequest("AI 서버 응답이 비어 있습니다.");
+        }
+
+        // 리포트 생성
+        Report report = Report.create(userId, districtCode, user.getCategoryCode(), year, quarter, grade, score, declineType);
+
+        var aiRec = aiResponse.aiRecommendation();
+        String aiRecBadgeType = aiRec != null ? aiRec.badgeType() : "AI 추천";
+        String aiRecTitle = aiRec != null ? aiRec.title() : null;
+        String aiRecReasonTitle = aiRec != null ? aiRec.reasonTitle() : null;
+        String aiRecReasonDetail = aiRec != null ? aiRec.reasonDetail() : null;
+
+        report.applyAiResponse(
+                aiResponse.summary(),
+                aiResponse.aiOutlook(),
+                aiResponse.predictedTrend(),
+                aiResponse.predictedNextGrade(),
+                aiResponse.decisionRecommendation(),
+                aiResponse.decisionTitle(),
+                aiResponse.decisionDescription(),
+                aiRecBadgeType,
+                aiRecTitle,
+                aiRecReasonTitle,
+                aiRecReasonDetail
+        );
+        reportRepository.save(report);
+
+        Long reportId = report.getReportId();
+
+        for (var cause : orEmpty(aiResponse.causes())) {
+            reportCauseRepository.save(ReportCause.create(reportId, cause.title(), cause.level(), cause.description()));
+        }
+        for (var signal : orEmpty(aiResponse.signals())) {
+            reportSignalRepository.save(ReportSignal.create(reportId, signal.title(), signal.description()));
+        }
+        for (var sc : orEmpty(aiResponse.similarCases())) {
+            reportSimilarCaseRepository.save(ReportSimilarCase.create(
+                    reportId, sc.regionCode(), sc.regionName(), sc.summary(), sc.description(),
+                    sc.startYear(), sc.endYear(), sc.tag1(), sc.tag2(), sc.tag3(), sc.tag4()
+            ));
+        }
+        for (var ar : orEmpty(aiResponse.alternativeRegions())) {
+            reportAlternativeRegionRepository.save(ReportAlternativeRegion.create(
+                    reportId, ar.regionCode(), ar.rank(), ar.aiMessage()
+            ));
+        }
+        if (aiResponse.decisionReasons() != null) {
+            reportDecisionReasonsRepository.save(ReportDecisionReasons.create(
+                    reportId,
+                    aiResponse.decisionReasons().reason1(),
+                    aiResponse.decisionReasons().reason2(),
+                    aiResponse.decisionReasons().reason3()
+            ));
+        }
+
+        log.info("과거 리포트 생성 완료 - reportId: {}", reportId);
+        return report;
+    }
+
     private int gradeToScore(String grade) {
         return switch (grade) {
             case "A" -> 90;
