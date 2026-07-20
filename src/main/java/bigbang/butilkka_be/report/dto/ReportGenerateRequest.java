@@ -15,8 +15,16 @@ public record ReportGenerateRequest(
         @JsonProperty("decline_type") String declineType,
         ReportContext context,
         @JsonProperty("quarterly_history") QuarterlyHistory quarterlyHistory,
-        @JsonProperty("outlook_instructions") String outlookInstructions
+        @JsonProperty("outlook_instructions") String outlookInstructions,
+        @JsonProperty("all_grades") List<GradeInfo> allGrades
 ) {
+    public record GradeInfo(
+            @JsonProperty("region_code") String regionCode,
+            @JsonProperty("region_name") String regionName,
+            String grade,
+            Integer score,
+            @JsonProperty("decline_type") String declineType
+    ) {}
     public record ReportContext(
             @JsonProperty("sales_delta") Double salesDelta,
             @JsonProperty("foot_traffic_delta") Double footTrafficDelta,

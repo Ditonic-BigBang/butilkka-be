@@ -87,7 +87,7 @@ public class ReportGenerateService {
 
         ReportGenerateRequest request = new ReportGenerateRequest(
                 districtCode, latest.getDistrictName(), latest.getDistrictName(),
-                year, quarter, grade, score, declineType, context, quarterlyHistory, outlookInstructions
+                year, quarter, grade, score, declineType, context, quarterlyHistory, outlookInstructions, null
         );
 
         log.info("리포트 생성 요청 - district: {}, year: {}, quarter: {}", districtCode, year, quarter);
@@ -207,9 +207,20 @@ public class ReportGenerateService {
 
         String outlookInstructions = "1. 지역명을 반복하지 말 것 (예: '명동 명동' 금지). 2. 구체적인 수치(%, 숫자)를 포함하지 말 것.";
 
+        // 해당 분기의 모든 구 등급 정보 (대안 상권 추천용)
+        List<ReportGenerateRequest.GradeInfo> allGrades = quarterStats.stream()
+                .map(s -> new ReportGenerateRequest.GradeInfo(
+                        s.getDistrictCode(),
+                        s.getDistrictName(),
+                        s.getDeclineGrade() != null ? s.getDeclineGrade() : "C",
+                        gradeToScore(s.getDeclineGrade() != null ? s.getDeclineGrade() : "C"),
+                        s.getDirection() != null ? s.getDirection() : "정체"
+                ))
+                .toList();
+
         ReportGenerateRequest request = new ReportGenerateRequest(
                 districtCode, stats.getDistrictName(), stats.getDistrictName(),
-                year, quarter, grade, score, declineType, context, null, outlookInstructions
+                year, quarter, grade, score, declineType, context, null, outlookInstructions, allGrades
         );
 
         log.info("과거 리포트 생성 요청 - district: {}, year: {}, quarter: {}", districtCode, year, quarter);
