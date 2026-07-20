@@ -19,8 +19,14 @@ public class ReportSeedController {
     public ResponseEntity<ApiResponse<String>> seedPastReport(
             @RequestParam Long userId,
             @RequestParam int year,
-            @RequestParam int quarter) {
-        Report report = reportGenerateService.generateForPastQuarter(userId, year, quarter);
+            @RequestParam int quarter,
+            @RequestParam(required = false) String regionCode) {
+        Report report;
+        if (regionCode != null && !regionCode.isBlank()) {
+            report = reportGenerateService.generateForPastQuarterWithRegion(userId, regionCode, year, quarter);
+        } else {
+            report = reportGenerateService.generateForPastQuarter(userId, year, quarter);
+        }
         return ResponseEntity.ok(ApiResponse.ok("과거 리포트 생성 완료", "reportId: " + report.getReportId()));
     }
 }
