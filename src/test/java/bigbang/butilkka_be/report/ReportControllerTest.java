@@ -51,7 +51,7 @@ class ReportControllerTest {
                 null, null,
                 List.of(), List.of(), List.of(),
                 new ReportDetailResponse.Decision("버티기", "현 위치 유지 권장", "의사결정 설명"),
-                List.of(), null);
+                List.of(), null, false);
     }
 
     @Test
