@@ -1,6 +1,8 @@
 package bigbang.butilkka_be.report;
 
 import bigbang.butilkka_be.common.exception.AppException;
+import bigbang.butilkka_be.region.District;
+import bigbang.butilkka_be.region.DistrictRepository;
 import bigbang.butilkka_be.report.dto.ReportHistoryResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,6 +14,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anySet;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -21,11 +25,20 @@ class ReportHistoryServiceTest {
     @Mock
     private ReportRepository reportRepository;
 
+    @Mock
+    private DistrictRepository districtRepository;
+
     private ReportHistoryService service;
 
     @BeforeEach
     void setUp() {
-        service = new ReportHistoryService(reportRepository);
+        service = new ReportHistoryService(reportRepository, districtRepository);
+
+        // 기본 district mock (일부 테스트에서 사용되지 않을 수 있으므로 lenient)
+        District district = mock(District.class);
+        lenient().when(district.getDistrictCode()).thenReturn("11680");
+        lenient().when(district.getDistrictName()).thenReturn("강남구");
+        lenient().when(districtRepository.findAllById(anySet())).thenReturn(List.of(district));
     }
 
     private static Report reportOf(Long reportId, int year, int quarter, String grade, String summary) {
@@ -35,6 +48,7 @@ class ReportHistoryServiceTest {
         when(report.getQuarter()).thenReturn(quarter);
         when(report.getGrade()).thenReturn(grade);
         when(report.getSummary()).thenReturn(summary);
+        when(report.getRegionCode()).thenReturn("11680");
         return report;
     }
 

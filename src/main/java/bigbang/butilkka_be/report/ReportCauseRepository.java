@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface ReportCauseRepository extends JpaRepository<ReportCause, Long> {
     List<ReportCause> findByReportId(Long reportId);
+    void deleteByReportId(Long reportId);
 }

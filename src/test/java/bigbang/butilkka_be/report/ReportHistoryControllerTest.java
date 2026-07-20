@@ -44,7 +44,7 @@ class ReportHistoryControllerTest {
     void getHistory_returnsOk() throws Exception {
         when(reportHistoryService.getHistory(eq(1L), eq(0), eq(20))).thenReturn(
                 new ReportHistoryResponse(1, false, List.of(
-                        new ReportHistoryResponse.ReportHistoryItem(1L, "2026Q4", "A", "요약"))));
+                        new ReportHistoryResponse.ReportHistoryItem(1L, "2026Q4", "A", "요약", "11680", "강남구"))));
 
         mockMvc.perform(get("/api/v1/reportsHistory")
                         .with(authentication(authAs("1"))))

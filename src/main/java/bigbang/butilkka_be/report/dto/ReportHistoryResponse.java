@@ -7,5 +7,12 @@ public record ReportHistoryResponse(
         boolean hasNext,
         List<ReportHistoryItem> reports
 ) {
-    public record ReportHistoryItem(Long reportId, String quarter, String grade, String briefing) {}
+    public record ReportHistoryItem(
+            Long reportId,
+            String quarter,
+            String grade,
+            String briefing,
+            String regionCode,
+            String regionName
+    ) {}
 }

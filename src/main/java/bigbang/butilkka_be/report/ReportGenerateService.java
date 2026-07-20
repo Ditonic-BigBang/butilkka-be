@@ -98,8 +98,20 @@ public class ReportGenerateService {
             throw AppException.badRequest("AI 서버 응답이 비어 있습니다.");
         }
 
-        // Report 저장 (regionCode 대신 districtCode 사용)
-        Report report = Report.create(userId, districtCode, user.getCategoryCode(), year, quarter, grade, score, declineType);
+        // 같은 가게+분기 기존 리포트 조회 (업서트)
+        Report report = reportRepository.findByUserIdAndRegionCodeAndYearAndQuarter(userId, districtCode, year, quarter)
+                .orElseGet(() -> Report.create(userId, districtCode, user.getCategoryCode(), year, quarter, grade, score, declineType));
+
+        // 기존 리포트가 있으면 관련 데이터 삭제
+        if (report.getReportId() != null) {
+            Long existingReportId = report.getReportId();
+            reportCauseRepository.deleteByReportId(existingReportId);
+            reportSignalRepository.deleteByReportId(existingReportId);
+            reportSimilarCaseRepository.deleteByReportId(existingReportId);
+            reportAlternativeRegionRepository.deleteByReportId(existingReportId);
+            reportDecisionReasonsRepository.deleteByReportId(existingReportId);
+        }
+
         // AI 추천 카드 데이터 추출
         var aiRec = aiResponse.aiRecommendation();
         String aiRecBadgeType = aiRec != null ? aiRec.badgeType() : "AI 추천";
@@ -124,7 +136,7 @@ public class ReportGenerateService {
 
         Long reportId = report.getReportId();
 
-        // Causes 저장 (AI 응답에서 생략될 수 있으므로 null-safe하게 처리)
+        // Causes 저장
         for (var cause : orEmpty(aiResponse.causes())) {
             reportCauseRepository.save(ReportCause.create(reportId, cause.title(), cause.level(), cause.description()));
         }
